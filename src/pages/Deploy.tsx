@@ -8,11 +8,12 @@ import { useUserStore } from "@/store/userStore";
 import { toast } from "sonner";
 import { Rocket, ExternalLink, Copy } from "lucide-react";
 import { z } from "zod";
+import { normalizePhone } from "@/lib/phone";
 
 const phoneSchema = z
   .string()
   .trim()
-  .regex(/^(?:\+?254|0)?7\d{8}$/, "Enter a valid Kenyan number (07XXXXXXXX)");
+  .refine((v) => normalizePhone(v) !== null, "Enter a valid number with country code (e.g. 254712345678)");
 
 const Deploy = () => {
   const { coins, deployBot, bots } = useUserStore();
