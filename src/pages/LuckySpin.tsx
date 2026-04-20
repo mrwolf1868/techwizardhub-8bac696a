@@ -9,19 +9,17 @@ import { toast } from "sonner";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 
-// 8 segments. 4:6 win:lose → roughly 40% land on a win segment.
-// Wins multiply stake; losses return 0.
+// 8 segments. Wins multiply stake; losses return 0.
 const SEGMENTS = [
   { label: "0×", mult: 0, win: false, color: "hsl(var(--lose))" },
   { label: "1.5×", mult: 1.5, win: true, color: "hsl(var(--win))" },
   { label: "0×", mult: 0, win: false, color: "hsl(var(--lose))" },
   { label: "2×", mult: 2, win: true, color: "hsl(var(--primary))" },
   { label: "0×", mult: 0, win: false, color: "hsl(var(--lose))" },
-  { label: "0×", mult: 0, win: false, color: "hsl(var(--lose))" },
+  { label: "1.5×", mult: 1.5, win: true, color: "hsl(var(--win))" },
   { label: "5×", mult: 5, win: true, color: "hsl(var(--coin))" },
   { label: "0×", mult: 0, win: false, color: "hsl(var(--lose))" },
 ];
-// 5 losses, 3 wins → ~37.5% wins (matches 4:6 lose-heavy ratio)
 
 const SEG = 360 / SEGMENTS.length;
 
