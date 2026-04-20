@@ -23,9 +23,10 @@ const Deploy = () => {
     const parsed = phoneSchema.safeParse(phone);
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
     if (coins < 70) return toast.error("Need 70 coins to deploy a bot");
+    const normalized = normalizePhone(parsed.data)!;
     setLoading(true);
     await new Promise((r) => setTimeout(r, 800));
-    const bot = deployBot(parsed.data);
+    const bot = deployBot(normalized);
     setLoading(false);
     if (!bot) return toast.error("Deployment failed");
     toast.success("✅ Bot deployed! Open the link to connect.");

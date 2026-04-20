@@ -8,9 +8,13 @@ import { useUserStore } from "@/store/userStore";
 import { toast } from "sonner";
 import { Wallet, Smartphone } from "lucide-react";
 import { z } from "zod";
+import { normalizePhone } from "@/lib/phone";
 
 const schema = z.object({
-  phone: z.string().trim().regex(/^(?:\+?254|0)?7\d{8}$/, "Invalid Safaricom number"),
+  phone: z
+    .string()
+    .trim()
+    .refine((v) => normalizePhone(v) !== null, "Enter a valid phone (e.g. 254712345678 or 0712345678)"),
   amount: z.number().int().min(10, "Min 10 KES").max(70000, "Max 70,000 KES"),
 });
 
@@ -27,11 +31,11 @@ const Buy = () => {
     if (!parsed.success) {
       return toast.error(parsed.error.errors[0].message);
     }
+    const normalized = normalizePhone(parsed.data.phone)!;
     setLoading(true);
-    toast.info("📲 STK push sent (mock). Approve on your phone...");
+    toast.info(`📲 STK push sent to +${normalized} (mock). Approve on your phone...`);
     await new Promise((r) => setTimeout(r, 2200));
-    // Mock M-Pesa success: 1 KES = 1 coin
-    addCoins(parsed.data.amount, "purchase", `M-Pesa ${parsed.data.amount} KES`);
+    addCoins(parsed.data.amount, "purchase", `M-Pesa ${parsed.data.amount} KES (+${normalized})`);
     setLoading(false);
     toast.success(`✅ Payment confirmed — ${parsed.data.amount} coins added`);
   };
@@ -53,20 +57,23 @@ const Buy = () => {
         </div>
 
         <Label htmlFor="mpesa-phone" className="mt-5 block text-xs uppercase tracking-widest text-muted-foreground">
-          Safaricom number
+          Phone number (with country code)
         </Label>
         <div className="mt-2 flex items-center gap-2">
           <Smartphone className="h-4 w-4 text-muted-foreground" />
           <Input
             id="mpesa-phone"
             inputMode="tel"
-            placeholder="0712345678"
+            placeholder="254712345678 or 0712345678"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            maxLength={15}
+            maxLength={18}
             className="bg-background/60"
           />
         </div>
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          Accepts +country code, 00, or local 07/011 numbers (Kenya auto-detected).
+        </p>
 
         <Label htmlFor="amount" className="mt-4 block text-xs uppercase tracking-widest text-muted-foreground">
           Amount (KES)
