@@ -51,17 +51,20 @@ const Deploy = () => {
         </div>
 
         <Label htmlFor="phone" className="mt-5 block text-xs uppercase tracking-widest text-muted-foreground">
-          WhatsApp number
+          WhatsApp number (with country code)
         </Label>
         <Input
           id="phone"
           inputMode="tel"
-          placeholder="0712345678"
+          placeholder="254712345678 or 256701234567"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          maxLength={15}
+          maxLength={18}
           className="mt-2 bg-background/60"
         />
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          Any country supported. Local Kenyan 07/011 numbers auto-detected.
+        </p>
         <Button
           size="lg"
           onClick={onDeploy}
