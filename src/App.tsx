@@ -4,6 +4,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
+import Games from "./pages/Games.tsx";
+import Avicoins from "./pages/Avicoins.tsx";
+import LuckySpin from "./pages/LuckySpin.tsx";
+import Deploy from "./pages/Deploy.tsx";
+import Buy from "./pages/Buy.tsx";
+import Profile from "./pages/Profile.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -12,11 +18,16 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
+      <Sonner position="top-center" richColors />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/games" element={<Games />} />
+          <Route path="/games/avicoins" element={<Avicoins />} />
+          <Route path="/games/spin" element={<LuckySpin />} />
+          <Route path="/deploy" element={<Deploy />} />
+          <Route path="/buy" element={<Buy />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
