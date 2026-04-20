@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import Games from "./pages/Games.tsx";
 import Avicoins from "./pages/Avicoins.tsx";
+import Rocketcoins from "./pages/Rocketcoins.tsx";
+import Dive from "./pages/Dive.tsx";
 import LuckySpin from "./pages/LuckySpin.tsx";
 import Deploy from "./pages/Deploy.tsx";
 import Buy from "./pages/Buy.tsx";
@@ -24,6 +26,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/games" element={<Games />} />
           <Route path="/games/avicoins" element={<Avicoins />} />
+          <Route path="/games/rocketcoins" element={<Rocketcoins />} />
+          <Route path="/games/dive" element={<Dive />} />
           <Route path="/games/spin" element={<LuckySpin />} />
           <Route path="/deploy" element={<Deploy />} />
           <Route path="/buy" element={<Buy />} />
