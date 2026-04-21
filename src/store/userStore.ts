@@ -29,6 +29,7 @@ type UserState = {
   bots: Bot[];
 
   init: () => void;
+  applyPendingReferral: (code: string) => void;
   acceptTerms: () => void;
   setPhone: (phone: string) => void;
   addCoins: (amount: number, type: Transaction["type"], description: string) => void;
@@ -72,6 +73,13 @@ export const useUserStore = create<UserState>()(
             },
           ],
         });
+      },
+
+      applyPendingReferral: (code) => {
+        const c = code.trim().toUpperCase();
+        if (!c) return;
+        // Defer until init has set referralCode
+        setTimeout(() => get().redeemReferral(c), 0);
       },
 
       acceptTerms: () => set({ agreedToTerms: true }),
