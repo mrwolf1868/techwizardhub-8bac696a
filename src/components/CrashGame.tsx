@@ -176,21 +176,34 @@ export const CrashGame = ({
         )}
       </Card>
 
-      {/* History */}
-      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+      {/* History — always visible like Aviator */}
+      <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+        <span className="shrink-0 text-[10px] uppercase tracking-widest text-muted-foreground">
+          Past:
+        </span>
         {history.map((h) => (
           <span
             key={h.id}
             className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
-              h.crashAt >= 2 ? "bg-win/20 text-win" : "bg-lose/20 text-lose"
+              h.crashAt >= 10
+                ? "bg-coin/30 text-coin"
+                : h.crashAt >= 2
+                ? "bg-win/20 text-win"
+                : "bg-lose/20 text-lose"
             }`}
           >
             {h.crashAt.toFixed(2)}×
           </span>
         ))}
-        {history.length === 0 && (
-          <span className="text-xs text-muted-foreground">First round in progress…</span>
-        )}
+        {history.length === 0 &&
+          Array.from({ length: 8 }).map((_, i) => (
+            <span
+              key={i}
+              className="shrink-0 rounded-full bg-muted/40 px-3 py-1 text-xs font-bold text-muted-foreground/60"
+            >
+              —
+            </span>
+          ))}
       </div>
 
       {/* Controls */}
