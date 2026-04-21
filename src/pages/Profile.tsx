@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUserStore } from "@/store/userStore";
 import { toast } from "sonner";
-import { Copy, Gift, History, User as UserIcon } from "lucide-react";
+import { Copy, Gift, History, Share2, User as UserIcon } from "lucide-react";
 
 const Profile = () => {
   const { phoneNumber, setPhone, referralCode, redeemReferral, transactions, coins, botsDeployed, gamesPlayed } =
