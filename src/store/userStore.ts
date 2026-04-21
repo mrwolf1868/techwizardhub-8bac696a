@@ -13,7 +13,8 @@ export type Bot = {
   id: string;
   phoneNumber: string;
   deployedAt: number;
-  link: string;
+  /** Pairing code shown to the user (link is never exposed) */
+  code: string;
 };
 
 type UserState = {
@@ -33,7 +34,7 @@ type UserState = {
   addCoins: (amount: number, type: Transaction["type"], description: string) => void;
   spendCoins: (amount: number, type: Transaction["type"], description: string) => boolean;
   recordGame: () => void;
-  deployBot: (phoneNumber: string) => Bot | null;
+  deployBot: (phoneNumber: string, code: string) => Bot | null;
   redeemReferral: (code: string) => boolean;
   reset: () => void;
 };
@@ -102,7 +103,7 @@ export const useUserStore = create<UserState>()(
 
       recordGame: () => set({ gamesPlayed: get().gamesPlayed + 1 }),
 
-      deployBot: (phoneNumber) => {
+      deployBot: (phoneNumber, code) => {
         const s = get();
         if (s.coins < 70) return null;
         const ok = get().spendCoins(70, "deploy", `Bot deploy for ${phoneNumber}`);
@@ -111,7 +112,7 @@ export const useUserStore = create<UserState>()(
           id: crypto.randomUUID(),
           phoneNumber,
           deployedAt: Date.now(),
-          link: `https://web-production-2646.up.railway.app/?number=${encodeURIComponent(phoneNumber)}`,
+          code,
         };
         set({ bots: [bot, ...get().bots], botsDeployed: get().botsDeployed + 1 });
         return bot;

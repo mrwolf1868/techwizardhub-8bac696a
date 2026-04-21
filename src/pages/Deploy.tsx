@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUserStore } from "@/store/userStore";
 import { toast } from "sonner";
-import { Rocket, ExternalLink, Copy } from "lucide-react";
+import { Rocket, Copy, Smartphone, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
-import { normalizePhone } from "@/lib/phone";
+import { normalizePhone, formatPhoneDisplay } from "@/lib/phone";
+import { supabase } from "@/integrations/supabase/client";
 
 const phoneSchema = z
   .string()
@@ -26,12 +27,25 @@ const Deploy = () => {
     if (coins < 70) return toast.error("Need 70 coins to deploy a bot");
     const normalized = normalizePhone(parsed.data)!;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    const bot = deployBot(normalized);
-    setLoading(false);
-    if (!bot) return toast.error("Deployment failed");
-    toast.success("✅ Bot deployed! Open the link to connect.");
-    setPhone("");
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-pair-code", {
+        body: { phone: normalized },
+      });
+      if (error) throw error;
+      const code = (data as { code?: string })?.code;
+      if (!code) throw new Error("No pairing code returned");
+      const bot = deployBot(normalized, code);
+      if (!bot) {
+        toast.error("Deployment failed");
+        return;
+      }
+      toast.success("✅ Bot deployed! Use the pairing code below.");
+      setPhone("");
+    } catch (e) {
+      toast.error((e as Error).message || "Could not fetch pairing code");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -53,15 +67,18 @@ const Deploy = () => {
         <Label htmlFor="phone" className="mt-5 block text-xs uppercase tracking-widest text-muted-foreground">
           WhatsApp number (with country code)
         </Label>
-        <Input
-          id="phone"
-          inputMode="tel"
-          placeholder="254712345678 or 256701234567"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          maxLength={18}
-          className="mt-2 bg-background/60"
-        />
+        <div className="mt-2 flex items-center gap-2">
+          <Smartphone className="h-4 w-4 text-muted-foreground" />
+          <Input
+            id="phone"
+            inputMode="tel"
+            placeholder="254712345678 or 256701234567"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            maxLength={18}
+            className="bg-background/60"
+          />
+        </div>
         <p className="mt-1 text-[10px] text-muted-foreground">
           Any country supported. Local Kenyan 07/011 numbers auto-detected.
         </p>
@@ -71,8 +88,21 @@ const Deploy = () => {
           disabled={loading || coins < 70}
           className="mt-4 w-full bg-gradient-primary font-display font-bold shadow-glow hover:opacity-90"
         >
-          {loading ? "Deploying..." : `🚀 Deploy Bot (-70 coins)`}
+          {loading ? "Generating pairing code..." : `🚀 Deploy Bot (-70 coins)`}
         </Button>
+      </Card>
+
+      <Card className="mt-4 border-border/60 bg-gradient-card p-4">
+        <div className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
+          How to connect
+        </div>
+        <ol className="mt-2 space-y-1 text-xs text-foreground/80">
+          <li>1. Open <strong>WhatsApp</strong> on your phone.</li>
+          <li>2. Tap <strong>Settings → Linked devices → Link a device</strong>.</li>
+          <li>3. Choose <strong>Link with phone number instead</strong>.</li>
+          <li>4. Enter the <strong>pairing code</strong> shown after deploying.</li>
+          <li>5. Wait a few seconds — your bot is live ✅</li>
+        </ol>
       </Card>
 
       {bots.length > 0 && (
@@ -85,37 +115,35 @@ const Deploy = () => {
               <Card key={b.id} className="border-border/60 bg-gradient-card p-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="font-display text-base font-bold">{b.phoneNumber}</div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-win" />
+                      <div className="font-display text-base font-bold">
+                        {formatPhoneDisplay(b.phoneNumber)}
+                      </div>
+                    </div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(b.deployedAt).toLocaleString()}
+                      Deployed {new Date(b.deployedAt).toLocaleString()}
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      onClick={() => {
-                        navigator.clipboard.writeText(b.link);
-                        toast.success("Link copied");
-                      }}
-                      aria-label="Copy link"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      asChild
-                      className="bg-gradient-primary shadow-glow"
-                      aria-label="Open bot link"
-                    >
-                      <a href={b.link} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  </div>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    onClick={() => {
+                      navigator.clipboard.writeText(b.code);
+                      toast.success("Code copied");
+                    }}
+                    aria-label="Copy code"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
                 </div>
-                <div className="mt-2 truncate rounded-md border border-border bg-background/40 px-2 py-1 font-mono text-xs text-muted-foreground">
-                  {b.link}
+                <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-center">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Pairing code
+                  </div>
+                  <div className="mt-1 font-mono text-2xl font-black tracking-[0.3em] text-gradient-primary">
+                    {b.code}
+                  </div>
                 </div>
               </Card>
             ))}
