@@ -136,6 +136,10 @@ const Profile = () => {
         <p className="mt-2 text-[11px] text-muted-foreground">
           Friends who sign up via your link automatically earn you 30 coins.
         </p>
+
+        <Label className="mt-4 block text-xs uppercase tracking-widest text-muted-foreground">
+          Or redeem a friend's code manually
+        </Label>
         <div className="mt-2 flex gap-2">
           <Input
             value={refInput}
