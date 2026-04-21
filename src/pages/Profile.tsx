@@ -14,9 +14,32 @@ const Profile = () => {
   const [refInput, setRefInput] = useState("");
   const [phoneInput, setPhoneInput] = useState(phoneNumber || "");
 
+  const referralLink = `${window.location.origin}/?ref=${referralCode}`;
+
   const copyCode = () => {
     navigator.clipboard.writeText(referralCode);
     toast.success("Referral code copied");
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(referralLink);
+    toast.success("Referral link copied");
+  };
+
+  const shareLink = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Join TECHWIZARD Hub",
+          text: `Sign up with my link and we both get coins! Code: ${referralCode}`,
+          url: referralLink,
+        });
+      } catch {
+        /* user cancelled */
+      }
+    } else {
+      copyLink();
+    }
   };
 
   const redeem = () => {
