@@ -120,8 +120,22 @@ const Profile = () => {
         </div>
 
         <Label className="mt-4 block text-xs uppercase tracking-widest text-muted-foreground">
-          Redeem a friend's code
+          Your referral link
         </Label>
+        <div className="mt-2 flex gap-2">
+          <div className="flex-1 truncate rounded-md border border-coin/20 bg-background/40 px-3 py-2 font-mono text-xs">
+            {referralLink}
+          </div>
+          <Button onClick={copyLink} variant="secondary" size="icon" aria-label="Copy link">
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button onClick={shareLink} className="bg-gradient-coin text-coin-foreground" size="icon" aria-label="Share">
+            <Share2 className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Friends who sign up via your link automatically earn you 30 coins.
+        </p>
         <div className="mt-2 flex gap-2">
           <Input
             value={refInput}
