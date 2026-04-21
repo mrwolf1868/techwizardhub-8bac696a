@@ -100,6 +100,12 @@
   .animate-bubble { animation: bubble 5s ease-in infinite; }
 }
 
+/* Hide Edit with Lovable badge on published deployments */
+#lovable-badge, [id*='lovable'], .lovable-badge {
+  display: none !important;
+  visibility: hidden !important;
+}
+
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.4); }
   50% { box-shadow: 0 0 40px hsl(var(--primary) / 0.8); }
