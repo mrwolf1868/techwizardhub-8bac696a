@@ -42,10 +42,16 @@ const LuckySpin = () => {
     recordGame();
     const idx = Math.floor(Math.random() * SEGMENTS.length);
     const seg = SEGMENTS[idx];
-    // Pointer at top (12 o'clock). We want segment center under pointer.
+    // Pointer is fixed at top (12 o'clock = 0° in conic-gradient space).
+    // Segment i occupies [i*SEG, (i+1)*SEG] clockwise from top, center at i*SEG + SEG/2.
+    // To bring that center under the pointer, rotate wheel by -(center) mod 360.
+    const segCenter = idx * SEG + SEG / 2;
+    const currentMod = ((rotation % 360) + 360) % 360;
+    const desiredMod = (360 - segCenter) % 360;
+    let delta = desiredMod - currentMod;
+    if (delta <= 0) delta += 360;
     const turns = 5;
-    const target = turns * 360 + (360 - (idx * SEG + SEG / 2));
-    const final = rotation + target - (rotation % 360);
+    const final = rotation + turns * 360 + delta;
     setSpinning(true);
     setRotation(final);
     setTimeout(() => {
@@ -91,13 +97,15 @@ const LuckySpin = () => {
             }}
           >
             {SEGMENTS.map((s, i) => {
-              const angle = i * SEG + SEG / 2;
+              // conic-gradient 0° is at top; CSS rotate 0° is at right (3 o'clock).
+              // Offset by -90° so labels align with their colored slices.
+              const angle = i * SEG + SEG / 2 - 90;
               return (
                 <div
                   key={i}
-                  className="absolute left-1/2 top-1/2 origin-[0_0] font-display text-base font-black text-background"
+                  className="pointer-events-none absolute left-1/2 top-1/2 font-display text-base font-black text-background"
                   style={{
-                    transform: `rotate(${angle}deg) translate(80px, -8px)`,
+                    transform: `translate(-50%, -50%) rotate(${angle}deg) translate(100px) rotate(90deg)`,
                   }}
                 >
                   {s.label}
