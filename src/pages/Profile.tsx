@@ -9,12 +9,11 @@ import { toast } from "sonner";
 import { Copy, Gift, History, Share2, User as UserIcon } from "lucide-react";
 
 const Profile = () => {
-  const { phoneNumber, setPhone, referralCode, redeemReferral, transactions, coins, botsDeployed, gamesPlayed } =
+  const { phoneNumber, email, referralCode, redeemReferral, transactions, coins, botsDeployed, gamesPlayed } =
     useUserStore();
   const [refInput, setRefInput] = useState("");
-  const [phoneInput, setPhoneInput] = useState(phoneNumber || "");
 
-  const referralLink = `${window.location.origin}/?ref=${referralCode}`;
+  const referralLink = `${window.location.origin}/register?ref=${referralCode}`;
 
   const copyCode = () => {
     navigator.clipboard.writeText(referralCode);
@@ -52,11 +51,6 @@ const Profile = () => {
     } else {
       toast.error("Invalid or already-used code");
     }
-  };
-
-  const savePhone = () => {
-    setPhone(phoneInput.trim());
-    toast.success("Phone saved");
   };
 
   return (
