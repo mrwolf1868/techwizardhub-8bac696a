@@ -156,12 +156,7 @@ Deno.serve(async (req) => {
     }
 
     // 3) Persist pending transaction
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    const { error: insErr } = await supabase.from("mpesa_transactions").insert({
+    const { error: insErr } = await cfgClient.from("mpesa_transactions").insert({
       phone: normalized,
       amount: amt,
       checkout_request_id: stkData.CheckoutRequestID,
