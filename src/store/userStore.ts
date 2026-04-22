@@ -135,7 +135,6 @@ export const useUserStore = create<UserState>()(
         const extraCoins = Math.max(0, s.coins - 70);
 
         if (extraCoins > 0) {
-          await supabase.rpc as unknown; // noop
           const { data: profile } = await supabase
             .from("profiles")
             .select("coins")
