@@ -83,16 +83,16 @@ const Profile = () => {
       </Card>
 
       <Card className="mt-4 border-border/60 bg-gradient-card p-4">
-        <Label className="text-xs uppercase tracking-widest text-muted-foreground">Phone number</Label>
-        <div className="mt-2 flex gap-2">
-          <Input
-            value={phoneInput}
-            onChange={(e) => setPhoneInput(e.target.value)}
-            placeholder="0712345678"
-            maxLength={15}
-            className="bg-background/60"
-          />
-          <Button onClick={savePhone} variant="secondary">Save</Button>
+        <Label className="text-xs uppercase tracking-widest text-muted-foreground">Account</Label>
+        <div className="mt-2 space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Phone</span>
+            <span className="font-mono">{phoneNumber || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Email</span>
+            <span className="font-mono text-xs">{email || "—"}</span>
+          </div>
         </div>
       </Card>
 
