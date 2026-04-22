@@ -70,19 +70,13 @@ export const useUserStore = create<UserState>()(
       init: () => {
         const s = get();
         if (s.initialized) return;
+        // Welcome bonus is granted server-side on registration (handle_new_user trigger).
+        // Do NOT credit coins locally — only a logged-in user will see their balance after sync.
         set({
           initialized: true,
-          coins: 70,
-          referralCode: generateReferralCode(),
-          transactions: [
-            {
-              id: crypto.randomUUID(),
-              type: "welcome",
-              amount: 70,
-              description: "Welcome bonus 🎉",
-              timestamp: Date.now(),
-            },
-          ],
+          coins: 0,
+          referralCode: s.referralCode || generateReferralCode(),
+          transactions: [],
         });
       },
 
