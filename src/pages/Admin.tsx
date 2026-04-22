@@ -711,12 +711,23 @@ const PaymentsPanel = ({ mpesa }: { mpesa: MpesaTx[] }) => (
 /* ---------- Settings ---------- */
 const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown>; onSaved: () => void }) => {
   const [till, setTill] = useState("");
+  const [consumerKey, setConsumerKey] = useState("");
+  const [consumerSecret, setConsumerSecret] = useState("");
+  const [passkey, setPasskey] = useState("");
+  const [env, setEnv] = useState<"sandbox" | "production">("sandbox");
   const [maxSessions, setMaxSessions] = useState("");
   const [maxAttempts, setMaxAttempts] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const asStr = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
+
   useEffect(() => {
-    setTill(typeof settings.mpesa_till === "string" ? settings.mpesa_till : String(settings.mpesa_till ?? ""));
+    setTill(asStr(settings.mpesa_till));
+    setConsumerKey(asStr(settings.mpesa_consumer_key));
+    setConsumerSecret(asStr(settings.mpesa_consumer_secret));
+    setPasskey(asStr(settings.mpesa_passkey));
+    const e = asStr(settings.mpesa_env);
+    setEnv(e === "production" ? "production" : "sandbox");
     setMaxSessions(String(settings.max_sessions_per_user ?? ""));
     setMaxAttempts(String(settings.max_pairing_attempts_per_hour ?? ""));
   }, [settings]);
@@ -735,19 +746,81 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
     onSaved();
   };
 
+  const saveAllMpesa = async () => {
+    if (!/^\d{4,10}$/.test(till)) return toast.error("Till/shortcode must be 4-10 digits");
+    if (!consumerKey.trim() || !consumerSecret.trim() || !passkey.trim())
+      return toast.error("Consumer key, secret and passkey are required");
+    setSaving(true);
+    const rows = [
+      { key: "mpesa_till", value: till },
+      { key: "mpesa_consumer_key", value: consumerKey.trim() },
+      { key: "mpesa_consumer_secret", value: consumerSecret.trim() },
+      { key: "mpesa_passkey", value: passkey.trim() },
+      { key: "mpesa_env", value: env },
+    ].map((r) => ({ ...r, value: r.value as never, updated_at: new Date().toISOString() }));
+    const { error } = await supabase.from("admin_settings").upsert(rows);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    await supabase.from("activity_logs").insert({
+      event: "setting_change", detail: `M-Pesa credentials updated (env: ${env})`,
+    });
+    toast.success("M-Pesa credentials saved");
+    onSaved();
+  };
+
   return (
     <div className="space-y-4">
       <Card className="bg-gradient-card p-4">
         <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
-          BuyGoods / M-Pesa Till
+          M-Pesa / BuyGoods credentials
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Till or PayBill number used for STK push. Customers pay real money to this till.
+          Required to send STK push. Values are stored securely and used by the payment function.
         </p>
-        <div className="mt-3 flex gap-2">
-          <Input value={till} onChange={(e) => setTill(e.target.value)} placeholder="5529503" className="font-mono" />
-          <Button disabled={saving || !/^\d{4,10}$/.test(till)} onClick={() => save("mpesa_till", till, "Till number")}>
-            Save
+
+        <div className="mt-4 grid gap-3">
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Environment</label>
+            <div className="mt-1 flex w-fit gap-1 rounded-lg border border-border/60 p-1">
+              {(["sandbox", "production"] as const).map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => setEnv(e)}
+                  className={`rounded-md px-3 py-1 text-xs capitalize ${
+                    env === e ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Till / PayBill (BusinessShortCode)
+            </label>
+            <Input value={till} onChange={(e) => setTill(e.target.value)} placeholder="5529503" className="mt-1 font-mono" />
+          </div>
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Consumer Key</label>
+            <Input value={consumerKey} onChange={(e) => setConsumerKey(e.target.value)} placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxx" className="mt-1 font-mono" />
+          </div>
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Consumer Secret</label>
+            <Input type="password" value={consumerSecret} onChange={(e) => setConsumerSecret(e.target.value)} placeholder="••••••••••••" className="mt-1 font-mono" />
+          </div>
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Passkey (Lipa na M-Pesa Online)</label>
+            <Input type="password" value={passkey} onChange={(e) => setPasskey(e.target.value)} placeholder="••••••••••••" className="mt-1 font-mono" />
+          </div>
+
+          <Button disabled={saving} onClick={saveAllMpesa} className="mt-1">
+            Save M-Pesa credentials
           </Button>
         </div>
       </Card>
