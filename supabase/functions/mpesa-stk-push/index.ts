@@ -50,25 +50,51 @@ Deno.serve(async (req) => {
       });
     }
 
-    const consumerKey = Deno.env.get("MPESA_CONSUMER_KEY")!;
-    const consumerSecret = Deno.env.get("MPESA_CONSUMER_SECRET")!;
-    const passkey = Deno.env.get("MPESA_PASSKEY")!;
-    let shortcode = Deno.env.get("MPESA_SHORTCODE")!;
+    // Load credentials: admin_settings first, env as fallback
+    let consumerKey = Deno.env.get("MPESA_CONSUMER_KEY") ?? "";
+    let consumerSecret = Deno.env.get("MPESA_CONSUMER_SECRET") ?? "";
+    let passkey = Deno.env.get("MPESA_PASSKEY") ?? "";
+    let shortcode = Deno.env.get("MPESA_SHORTCODE") ?? "";
+    let mpesaEnv: "sandbox" | "production" =
+      Deno.env.get("MPESA_ENV") === "production" ? "production" : "sandbox";
 
-    // Configurable till/shortcode from admin_settings overrides the secret
+    const cfgClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
     try {
-      const cfgClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      );
-      const { data: tillRow } = await cfgClient
+      const { data: rows } = await cfgClient
         .from("admin_settings")
-        .select("value")
-        .eq("key", "mpesa_till")
-        .maybeSingle();
-      const till = typeof tillRow?.value === "string" ? tillRow.value : String(tillRow?.value ?? "");
-      if (till && /^\d{4,10}$/.test(till)) shortcode = till;
+        .select("key, value")
+        .in("key", [
+          "mpesa_till",
+          "mpesa_consumer_key",
+          "mpesa_consumer_secret",
+          "mpesa_passkey",
+          "mpesa_env",
+        ]);
+      const map: Record<string, string> = {};
+      (rows || []).forEach((r: { key: string; value: unknown }) => {
+        map[r.key] = typeof r.value === "string" ? r.value : String(r.value ?? "");
+      });
+      if (map.mpesa_till && /^\d{4,10}$/.test(map.mpesa_till)) shortcode = map.mpesa_till;
+      if (map.mpesa_consumer_key) consumerKey = map.mpesa_consumer_key;
+      if (map.mpesa_consumer_secret) consumerSecret = map.mpesa_consumer_secret;
+      if (map.mpesa_passkey) passkey = map.mpesa_passkey;
+      if (map.mpesa_env === "production" || map.mpesa_env === "sandbox") mpesaEnv = map.mpesa_env;
     } catch (_) { /* keep env fallback */ }
+
+    if (!consumerKey || !consumerSecret || !passkey || !shortcode) {
+      return new Response(JSON.stringify({
+        error: "M-Pesa is not configured. Admin must set credentials in Settings.",
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { oauth: OAUTH_URL, stk: STK_URL } = ENDPOINTS[mpesaEnv];
 
     // 1) Get OAuth token
     const auth = btoa(`${consumerKey}:${consumerSecret}`);
