@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { supabase } from "@/integrations/supabase/client";
 
 export type Transaction = {
   id: string;
   type: "welcome" | "referral" | "purchase" | "deploy" | "game_win" | "game_loss";
-  amount: number; // positive credit, negative debit
+  amount: number;
   description: string;
   timestamp: number;
 };
@@ -13,13 +14,14 @@ export type Bot = {
   id: string;
   phoneNumber: string;
   deployedAt: number;
-  /** Pairing code shown to the user (link is never exposed) */
   code: string;
 };
 
 type UserState = {
   initialized: boolean;
+  userId: string | null;
   phoneNumber: string | null;
+  email: string | null;
   coins: number;
   gamesPlayed: number;
   botsDeployed: number;
@@ -27,8 +29,11 @@ type UserState = {
   agreedToTerms: boolean;
   transactions: Transaction[];
   bots: Bot[];
+  isAdmin: boolean;
 
   init: () => void;
+  syncFromSupabase: () => Promise<void>;
+  migrateLocalToAccount: (userId: string) => Promise<void>;
   applyPendingReferral: (code: string) => void;
   acceptTerms: () => void;
   setPhone: (phone: string) => void;
@@ -37,17 +42,22 @@ type UserState = {
   recordGame: () => void;
   deployBot: (phoneNumber: string, code: string) => Bot | null;
   redeemReferral: (code: string) => boolean;
+  signOutLocal: () => void;
   reset: () => void;
 };
 
 const generateReferralCode = () =>
   "TW" + Math.random().toString(36).substring(2, 8).toUpperCase();
 
+const LOCAL_REF_PENDING = "twh-pending-ref";
+
 export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
       initialized: false,
+      userId: null,
       phoneNumber: null,
+      email: null,
       coins: 0,
       gamesPlayed: 0,
       botsDeployed: 0,
@@ -55,6 +65,7 @@ export const useUserStore = create<UserState>()(
       agreedToTerms: false,
       transactions: [],
       bots: [],
+      isAdmin: false,
 
       init: () => {
         const s = get();
@@ -75,10 +86,101 @@ export const useUserStore = create<UserState>()(
         });
       },
 
+      syncFromSupabase: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          set({ userId: null, isAdmin: false });
+          return;
+        }
+
+        const [{ data: profile }, { data: txs }, { data: bots }, { data: roles }] =
+          await Promise.all([
+            supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+            supabase.from("transactions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50),
+            supabase.from("bots").select("*").eq("user_id", user.id).order("deployed_at", { ascending: false }),
+            supabase.from("user_roles").select("role").eq("user_id", user.id),
+          ]);
+
+        if (!profile) return;
+
+        set({
+          userId: user.id,
+          phoneNumber: profile.phone,
+          email: profile.email,
+          coins: profile.coins,
+          gamesPlayed: profile.games_played,
+          botsDeployed: profile.bots_deployed,
+          referralCode: profile.referral_code,
+          isAdmin: (roles || []).some((r: { role: string }) => r.role === "admin"),
+          transactions: (txs || []).map((t) => ({
+            id: t.id,
+            type: t.type as Transaction["type"],
+            amount: t.amount,
+            description: t.description,
+            timestamp: new Date(t.created_at).getTime(),
+          })),
+          bots: (bots || []).map((b) => ({
+            id: b.id,
+            phoneNumber: b.phone_number,
+            code: b.code,
+            deployedAt: new Date(b.deployed_at).getTime(),
+          })),
+        });
+      },
+
+      migrateLocalToAccount: async (userId) => {
+        const s = get();
+        // Only migrate if local has real activity beyond the welcome bonus
+        const extraTx = s.transactions.filter((t) => t.type !== "welcome");
+        const extraCoins = Math.max(0, s.coins - 70);
+
+        if (extraCoins > 0) {
+          await supabase.rpc as unknown; // noop
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("coins")
+            .eq("user_id", userId)
+            .maybeSingle();
+          if (profile) {
+            await supabase
+              .from("profiles")
+              .update({ coins: profile.coins + extraCoins })
+              .eq("user_id", userId);
+            await supabase.from("transactions").insert({
+              user_id: userId,
+              type: "purchase",
+              amount: extraCoins,
+              description: `Migrated ${extraCoins} coins from device`,
+            });
+          }
+        }
+
+        if (extraTx.length > 0) {
+          await supabase.from("transactions").insert(
+            extraTx.slice(0, 30).map((t) => ({
+              user_id: userId,
+              type: t.type,
+              amount: t.amount,
+              description: `[migrated] ${t.description}`,
+            }))
+          );
+        }
+
+        if (s.bots.length > 0) {
+          await supabase.from("bots").insert(
+            s.bots.map((b) => ({
+              user_id: userId,
+              phone_number: b.phoneNumber,
+              code: b.code,
+            }))
+          );
+        }
+      },
+
       applyPendingReferral: (code) => {
         const c = code.trim().toUpperCase();
         if (!c) return;
-        // Defer until init has set referralCode
+        localStorage.setItem(LOCAL_REF_PENDING, c);
         setTimeout(() => get().redeemReferral(c), 0);
       },
 
@@ -87,29 +189,57 @@ export const useUserStore = create<UserState>()(
 
       addCoins: (amount, type, description) => {
         const s = get();
+        const newCoins = s.coins + amount;
         set({
-          coins: s.coins + amount,
+          coins: newCoins,
           transactions: [
             { id: crypto.randomUUID(), type, amount, description, timestamp: Date.now() },
             ...s.transactions,
           ].slice(0, 50),
         });
+        // Persist to Supabase if logged in
+        if (s.userId) {
+          supabase.from("profiles").update({ coins: newCoins }).eq("user_id", s.userId).then();
+          supabase.from("transactions").insert({
+            user_id: s.userId,
+            type,
+            amount,
+            description,
+          }).then();
+        }
       },
 
       spendCoins: (amount, type, description) => {
         const s = get();
         if (s.coins < amount) return false;
+        const newCoins = s.coins - amount;
         set({
-          coins: s.coins - amount,
+          coins: newCoins,
           transactions: [
             { id: crypto.randomUUID(), type, amount: -amount, description, timestamp: Date.now() },
             ...s.transactions,
           ].slice(0, 50),
         });
+        if (s.userId) {
+          supabase.from("profiles").update({ coins: newCoins }).eq("user_id", s.userId).then();
+          supabase.from("transactions").insert({
+            user_id: s.userId,
+            type,
+            amount: -amount,
+            description,
+          }).then();
+        }
         return true;
       },
 
-      recordGame: () => set({ gamesPlayed: get().gamesPlayed + 1 }),
+      recordGame: () => {
+        const s = get();
+        const n = s.gamesPlayed + 1;
+        set({ gamesPlayed: n });
+        if (s.userId) {
+          supabase.from("profiles").update({ games_played: n }).eq("user_id", s.userId).then();
+        }
+      },
 
       deployBot: (phoneNumber, code) => {
         const s = get();
@@ -122,14 +252,22 @@ export const useUserStore = create<UserState>()(
           deployedAt: Date.now(),
           code,
         };
-        set({ bots: [bot, ...get().bots], botsDeployed: get().botsDeployed + 1 });
+        const newCount = get().botsDeployed + 1;
+        set({ bots: [bot, ...get().bots], botsDeployed: newCount });
+        if (s.userId) {
+          supabase.from("bots").insert({
+            user_id: s.userId,
+            phone_number: phoneNumber,
+            code,
+          }).then();
+          supabase.from("profiles").update({ bots_deployed: newCount }).eq("user_id", s.userId).then();
+        }
         return bot;
       },
 
       redeemReferral: (code) => {
         const s = get();
         if (!code || code === s.referralCode) return false;
-        // Prevent reuse
         const used = s.transactions.some(
           (t) => t.type === "referral" && t.description.includes(code)
         );
@@ -138,10 +276,27 @@ export const useUserStore = create<UserState>()(
         return true;
       },
 
+      signOutLocal: () =>
+        set({
+          userId: null,
+          phoneNumber: null,
+          email: null,
+          isAdmin: false,
+          coins: 0,
+          gamesPlayed: 0,
+          botsDeployed: 0,
+          referralCode: "",
+          transactions: [],
+          bots: [],
+          initialized: false,
+        }),
+
       reset: () =>
         set({
           initialized: false,
+          userId: null,
           phoneNumber: null,
+          email: null,
           coins: 0,
           gamesPlayed: 0,
           botsDeployed: 0,
@@ -149,6 +304,7 @@ export const useUserStore = create<UserState>()(
           agreedToTerms: false,
           transactions: [],
           bots: [],
+          isAdmin: false,
         }),
     }),
     { name: "techwizard-hub-user" }
