@@ -14,26 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          detail: string | null
+          event: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          detail?: string | null
+          event: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          detail?: string | null
+          event?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      admin_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       bots: {
         Row: {
           code: string
           deployed_at: string
+          disconnected_at: string | null
           id: string
+          last_active: string
           phone_number: string
+          status: string
           user_id: string
         }
         Insert: {
           code: string
           deployed_at?: string
+          disconnected_at?: string | null
           id?: string
+          last_active?: string
           phone_number: string
+          status?: string
           user_id: string
         }
         Update: {
           code?: string
           deployed_at?: string
+          disconnected_at?: string | null
           id?: string
+          last_active?: string
           phone_number?: string
+          status?: string
           user_id?: string
         }
         Relationships: []
@@ -80,6 +137,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pairing_logs: {
+        Row: {
+          created_at: string
+          detail: string | null
+          id: string
+          phone_number: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          phone_number: string
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          phone_number?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       password_reset_codes: {
         Row: {
           code: string
@@ -109,12 +193,15 @@ export type Database = {
       }
       profiles: {
         Row: {
+          banned: boolean
+          banned_at: string | null
           bots_deployed: number
           coins: number
           created_at: string
           email: string | null
           games_played: number
           id: string
+          last_active: string
           phone: string
           referral_code: string
           referred_by: string | null
@@ -122,12 +209,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          banned?: boolean
+          banned_at?: string | null
           bots_deployed?: number
           coins?: number
           created_at?: string
           email?: string | null
           games_played?: number
           id?: string
+          last_active?: string
           phone: string
           referral_code: string
           referred_by?: string | null
@@ -135,12 +225,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          banned?: boolean
+          banned_at?: string | null
           bots_deployed?: number
           coins?: number
           created_at?: string
           email?: string | null
           games_played?: number
           id?: string
+          last_active?: string
           phone?: string
           referral_code?: string
           referred_by?: string | null
