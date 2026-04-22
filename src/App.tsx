@@ -14,6 +14,10 @@ import LuckySpin from "./pages/LuckySpin.tsx";
 import Deploy from "./pages/Deploy.tsx";
 import Buy from "./pages/Buy.tsx";
 import Profile from "./pages/Profile.tsx";
+import Login from "./pages/Login.tsx";
+import Register from "./pages/Register.tsx";
+import ForgotPassword from "./pages/ForgotPassword.tsx";
+import Admin from "./pages/Admin.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -28,10 +32,10 @@ const ReferralCapture = () => {
     const ref = params.get("ref");
     const wasNew = !initialized;
     init();
-    if (ref && wasNew) {
-      applyPendingReferral(ref);
+    if (ref) {
+      localStorage.setItem("twh-pending-ref", ref.toUpperCase());
+      if (wasNew) applyPendingReferral(ref);
     }
-    // strip ?ref= from URL once captured
     if (ref) {
       params.delete("ref");
       const qs = params.toString();
@@ -52,6 +56,9 @@ const App = () => (
       <BrowserRouter>
         <ReferralCapture />
         <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/" element={<Index />} />
           <Route path="/games" element={<Games />} />
           <Route path="/games/avicoins" element={<Avicoins />} />
@@ -61,6 +68,7 @@ const App = () => (
           <Route path="/deploy" element={<Deploy />} />
           <Route path="/buy" element={<Buy />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
