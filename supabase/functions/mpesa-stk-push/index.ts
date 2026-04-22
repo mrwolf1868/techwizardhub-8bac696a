@@ -1,9 +1,17 @@
 import { corsHeaders } from "npm:@supabase/supabase-js/cors";
 import { createClient } from "npm:@supabase/supabase-js";
 
-// Daraja sandbox endpoints
-const OAUTH_URL = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
-const STK_URL = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
+// Daraja endpoints (selected at runtime by env)
+const ENDPOINTS = {
+  sandbox: {
+    oauth: "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
+    stk: "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+  },
+  production: {
+    oauth: "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
+    stk: "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+  },
+};
 
 const normalizePhone = (raw: string): string | null => {
   if (!raw) return null;
