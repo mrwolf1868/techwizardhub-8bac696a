@@ -258,8 +258,15 @@ export const useUserStore = create<UserState>()(
             user_id: s.userId,
             phone_number: phoneNumber,
             code,
+            status: "connected",
           }).then();
-          supabase.from("profiles").update({ bots_deployed: newCount }).eq("user_id", s.userId).then();
+          supabase.from("profiles").update({ bots_deployed: newCount, last_active: new Date().toISOString() }).eq("user_id", s.userId).then();
+          supabase.from("activity_logs").insert({
+            user_id: s.userId,
+            actor_id: s.userId,
+            event: "connect",
+            detail: `Bot connected for ${phoneNumber}`,
+          }).then();
         }
         return bot;
       },
