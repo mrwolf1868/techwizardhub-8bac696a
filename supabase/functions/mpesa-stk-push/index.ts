@@ -45,7 +45,22 @@ Deno.serve(async (req) => {
     const consumerKey = Deno.env.get("MPESA_CONSUMER_KEY")!;
     const consumerSecret = Deno.env.get("MPESA_CONSUMER_SECRET")!;
     const passkey = Deno.env.get("MPESA_PASSKEY")!;
-    const shortcode = Deno.env.get("MPESA_SHORTCODE")!;
+    let shortcode = Deno.env.get("MPESA_SHORTCODE")!;
+
+    // Configurable till/shortcode from admin_settings overrides the secret
+    try {
+      const cfgClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { data: tillRow } = await cfgClient
+        .from("admin_settings")
+        .select("value")
+        .eq("key", "mpesa_till")
+        .maybeSingle();
+      const till = typeof tillRow?.value === "string" ? tillRow.value : String(tillRow?.value ?? "");
+      if (till && /^\d{4,10}$/.test(till)) shortcode = till;
+    } catch (_) { /* keep env fallback */ }
 
     // 1) Get OAuth token
     const auth = btoa(`${consumerKey}:${consumerSecret}`);
