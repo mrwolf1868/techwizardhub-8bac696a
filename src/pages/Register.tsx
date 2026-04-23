@@ -108,12 +108,15 @@ const Register = () => {
                 inputMode="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="0712345678"
+                placeholder="+254712345678"
                 className="pl-9"
                 maxLength={18}
                 required
               />
             </div>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Use full international format. Local 07/011 Kenyan numbers are auto-detected.
+            </p>
           </div>
           <div>
             <Label className="text-xs uppercase tracking-widest text-muted-foreground">Password</Label>
