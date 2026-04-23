@@ -127,41 +127,10 @@ export const useUserStore = create<UserState>()(
 
       migrateLocalToAccount: async (userId) => {
         const s = get();
-        // Only migrate if local has real activity beyond the welcome bonus
-        const extraTx = s.transactions.filter((t) => t.type !== "welcome");
-        const extraCoins = Math.max(0, s.coins - 70);
 
-        if (extraCoins > 0) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("coins")
-            .eq("user_id", userId)
-            .maybeSingle();
-          if (profile) {
-            await supabase
-              .from("profiles")
-              .update({ coins: profile.coins + extraCoins })
-              .eq("user_id", userId);
-            await supabase.from("transactions").insert({
-              user_id: userId,
-              type: "purchase",
-              amount: extraCoins,
-              description: `Migrated ${extraCoins} coins from device`,
-            });
-          }
-        }
-
-        if (extraTx.length > 0) {
-          await supabase.from("transactions").insert(
-            extraTx.slice(0, 30).map((t) => ({
-              user_id: userId,
-              type: t.type,
-              amount: t.amount,
-              description: `[migrated] ${t.description}`,
-            }))
-          );
-        }
-
+        // Server-side trigger already grants the 70-coin welcome bonus on registration.
+        // We ONLY migrate bots from the device — coins and transactions are authoritative on the server
+        // to prevent any duplication of the welcome bonus or replayed local activity.
         if (s.bots.length > 0) {
           await supabase.from("bots").insert(
             s.bots.map((b) => ({
