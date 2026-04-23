@@ -6,39 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUserStore } from "@/store/userStore";
 import { toast } from "sonner";
-import { Copy, Gift, History, Share2, User as UserIcon } from "lucide-react";
+import { Copy, Gift, History, User as UserIcon } from "lucide-react";
 
 const Profile = () => {
   const { phoneNumber, email, referralCode, redeemReferral, transactions, coins, botsDeployed, gamesPlayed } =
     useUserStore();
   const [refInput, setRefInput] = useState("");
 
-  const referralLink = `${window.location.origin}/register?ref=${referralCode}`;
-
   const copyCode = () => {
     navigator.clipboard.writeText(referralCode);
     toast.success("Referral code copied");
-  };
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(referralLink);
-    toast.success("Referral link copied");
-  };
-
-  const shareLink = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Join TECHWIZARD Hub",
-          text: `Sign up with my link and we both get coins! Code: ${referralCode}`,
-          url: referralLink,
-        });
-      } catch {
-        /* user cancelled */
-      }
-    } else {
-      copyLink();
-    }
   };
 
   const redeem = () => {
