@@ -42,6 +42,7 @@ type UserState = {
   spendCoins: (amount: number, type: Transaction["type"], description: string) => boolean;
   recordGame: () => void;
   deployBot: (phoneNumber: string, code: string) => Bot | null;
+  markBotConnected: (botId: string) => void;
   redeemReferral: (code: string) => boolean;
   signOutLocal: () => void;
   reset: () => void;
