@@ -15,6 +15,7 @@ export type Bot = {
   phoneNumber: string;
   deployedAt: number;
   code: string;
+  status?: "connected" | "disconnected" | "pending";
 };
 
 type UserState = {
@@ -41,6 +42,7 @@ type UserState = {
   spendCoins: (amount: number, type: Transaction["type"], description: string) => boolean;
   recordGame: () => void;
   deployBot: (phoneNumber: string, code: string) => Bot | null;
+  markBotConnected: (botId: string) => void;
   redeemReferral: (code: string) => boolean;
   signOutLocal: () => void;
   reset: () => void;
@@ -118,6 +120,7 @@ export const useUserStore = create<UserState>()(
             phoneNumber: b.phone_number,
             code: b.code,
             deployedAt: new Date(b.deployed_at).getTime(),
+            status: (b.status as "connected" | "disconnected") ?? "pending",
           })),
         });
       },
@@ -244,6 +247,7 @@ export const useUserStore = create<UserState>()(
           phoneNumber,
           deployedAt: Date.now(),
           code,
+          status: "pending",
         };
         const newCount = get().botsDeployed + 1;
         set({ bots: [bot, ...get().bots], botsDeployed: newCount });
@@ -252,17 +256,40 @@ export const useUserStore = create<UserState>()(
             user_id: s.userId,
             phone_number: phoneNumber,
             code,
-            status: "connected",
+            status: "pending",
           }).then();
           supabase.from("profiles").update({ bots_deployed: newCount, last_active: new Date().toISOString() }).eq("user_id", s.userId).then();
           supabase.from("activity_logs").insert({
             user_id: s.userId,
             actor_id: s.userId,
-            event: "connect",
-            detail: `Bot connected for ${phoneNumber}`,
+            event: "deploy",
+            detail: `Bot deployed for ${phoneNumber}`,
           }).then();
         }
         return bot;
+      },
+
+      markBotConnected: (botId) => {
+        const s = get();
+        const bot = s.bots.find((b) => b.id === botId);
+        if (!bot) return;
+        set({
+          bots: s.bots.map((b) => (b.id === botId ? { ...b, status: "connected" } : b)),
+        });
+        if (s.userId) {
+          supabase
+            .from("bots")
+            .update({ status: "connected", last_active: new Date().toISOString() })
+            .eq("id", botId)
+            .eq("user_id", s.userId)
+            .then();
+          supabase.from("activity_logs").insert({
+            user_id: s.userId,
+            actor_id: s.userId,
+            event: "connect",
+            detail: `Bot connected for ${bot.phoneNumber}`,
+          }).then();
+        }
       },
 
       redeemReferral: (code) => {

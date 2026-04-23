@@ -6,39 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUserStore } from "@/store/userStore";
 import { toast } from "sonner";
-import { Copy, Gift, History, Share2, User as UserIcon } from "lucide-react";
+import { Copy, Gift, History, User as UserIcon } from "lucide-react";
 
 const Profile = () => {
   const { phoneNumber, email, referralCode, redeemReferral, transactions, coins, botsDeployed, gamesPlayed } =
     useUserStore();
   const [refInput, setRefInput] = useState("");
 
-  const referralLink = `${window.location.origin}/register?ref=${referralCode}`;
-
   const copyCode = () => {
     navigator.clipboard.writeText(referralCode);
     toast.success("Referral code copied");
-  };
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(referralLink);
-    toast.success("Referral link copied");
-  };
-
-  const shareLink = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Join TECHWIZARD Hub",
-          text: `Sign up with my link and we both get coins! Code: ${referralCode}`,
-          url: referralLink,
-        });
-      } catch {
-        /* user cancelled */
-      }
-    } else {
-      copyLink();
-    }
   };
 
   const redeem = () => {
@@ -113,22 +90,8 @@ const Profile = () => {
           </Button>
         </div>
 
-        <Label className="mt-4 block text-xs uppercase tracking-widest text-muted-foreground">
-          Your referral link
-        </Label>
-        <div className="mt-2 flex gap-2">
-          <div className="flex-1 truncate rounded-md border border-coin/20 bg-background/40 px-3 py-2 font-mono text-xs">
-            {referralLink}
-          </div>
-          <Button onClick={copyLink} variant="secondary" size="icon" aria-label="Copy link">
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button onClick={shareLink} className="bg-gradient-coin text-coin-foreground" size="icon" aria-label="Share">
-            <Share2 className="h-4 w-4" />
-          </Button>
-        </div>
         <p className="mt-2 text-[11px] text-muted-foreground">
-          Friends who sign up via your link automatically earn you 30 coins.
+          Share your code with friends. When they sign up using it, you both earn coins.
         </p>
 
         <Label className="mt-4 block text-xs uppercase tracking-widest text-muted-foreground">
