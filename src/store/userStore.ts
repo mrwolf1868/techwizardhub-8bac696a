@@ -15,6 +15,7 @@ export type Bot = {
   phoneNumber: string;
   deployedAt: number;
   code: string;
+  status?: "connected" | "disconnected" | "pending";
 };
 
 type UserState = {
@@ -118,6 +119,7 @@ export const useUserStore = create<UserState>()(
             phoneNumber: b.phone_number,
             code: b.code,
             deployedAt: new Date(b.deployed_at).getTime(),
+            status: (b.status as "connected" | "disconnected") ?? "pending",
           })),
         });
       },
