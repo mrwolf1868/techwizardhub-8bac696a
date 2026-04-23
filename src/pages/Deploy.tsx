@@ -17,7 +17,7 @@ const phoneSchema = z
   .refine((v) => normalizePhone(v) !== null, "Enter a valid number with country code (e.g. 254712345678)");
 
 const Deploy = () => {
-  const { coins, deployBot, bots } = useUserStore();
+  const { coins, deployBot, bots, markBotConnected } = useUserStore();
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -111,42 +111,66 @@ const Deploy = () => {
             Your bots ({bots.length})
           </h3>
           <div className="mt-3 space-y-3">
-            {bots.map((b) => (
-              <Card key={b.id} className="border-border/60 bg-gradient-card p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-win" />
-                      <div className="font-display text-base font-bold">
-                        {formatPhoneDisplay(b.phoneNumber)}
+            {bots.map((b) => {
+              const isConnected = b.status === "connected";
+              return (
+                <Card key={b.id} className="border-border/60 bg-gradient-card p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2
+                          className={`h-4 w-4 ${isConnected ? "text-win" : "text-muted-foreground"}`}
+                        />
+                        <div className="font-display text-base font-bold">
+                          {formatPhoneDisplay(b.phoneNumber)}
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {isConnected ? "Connected" : "Awaiting pairing"} ·{" "}
+                        {new Date(b.deployedAt).toLocaleString()}
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Deployed {new Date(b.deployedAt).toLocaleString()}
-                    </div>
+                    {!isConnected && (
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={() => {
+                          navigator.clipboard.writeText(b.code);
+                          toast.success("Code copied");
+                        }}
+                        aria-label="Copy code"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    onClick={() => {
-                      navigator.clipboard.writeText(b.code);
-                      toast.success("Code copied");
-                    }}
-                    aria-label="Copy code"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-center">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                    Pairing code
-                  </div>
-                  <div className="mt-1 font-mono text-2xl font-black tracking-[0.3em] text-gradient-primary">
-                    {b.code}
-                  </div>
-                </div>
-              </Card>
-            ))}
+
+                  {!isConnected && (
+                    <>
+                      <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-center">
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                          Pairing code
+                        </div>
+                        <div className="mt-1 font-mono text-2xl font-black tracking-[0.3em] text-gradient-primary">
+                          {b.code}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          markBotConnected(b.id);
+                          toast.success("Marked as connected ✅");
+                        }}
+                        className="mt-3 w-full"
+                      >
+                        I've paired — mark as connected
+                      </Button>
+                    </>
+                  )}
+                </Card>
+              );
+            })}
           </div>
         </>
       )}
