@@ -36,7 +36,11 @@ const Register = () => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalized = normalizePhone(phone);
-    if (!normalized) return toast.error("Enter a valid phone number");
+    if (!normalized) {
+      return toast.error(
+        "That phone number isn't valid. Use the full international format, e.g. +254712345678."
+      );
+    }
     const parsed = schema.safeParse({ email, password });
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
 
