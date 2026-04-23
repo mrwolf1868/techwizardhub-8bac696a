@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { syncFromSupabase, migrateLocalToAccount } = useUserStore();
+  const { syncFromSupabase, reset } = useUserStore();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,11 +29,10 @@ const Login = () => {
       setLoading(false);
       return toast.error(error.message);
     }
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await migrateLocalToAccount(user.id);
-      await syncFromSupabase();
-    }
+    // Clear any stale local state from previous sessions, then sync from server.
+    // Never migrate on login — coins/transactions live on the server only.
+    reset();
+    await syncFromSupabase();
     toast.success("Welcome back!");
     navigate("/");
   };
