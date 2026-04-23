@@ -36,7 +36,11 @@ const Register = () => {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalized = normalizePhone(phone);
-    if (!normalized) return toast.error("Enter a valid phone number");
+    if (!normalized) {
+      return toast.error(
+        "That phone number isn't valid. Use the full international format, e.g. +254712345678."
+      );
+    }
     const parsed = schema.safeParse({ email, password });
     if (!parsed.success) return toast.error(parsed.error.errors[0].message);
 
@@ -104,12 +108,15 @@ const Register = () => {
                 inputMode="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="0712345678"
+                placeholder="+254712345678"
                 className="pl-9"
                 maxLength={18}
                 required
               />
             </div>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Use full international format. Local 07/011 Kenyan numbers are auto-detected.
+            </p>
           </div>
           <div>
             <Label className="text-xs uppercase tracking-widest text-muted-foreground">Password</Label>
