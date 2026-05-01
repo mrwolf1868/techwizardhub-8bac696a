@@ -35,7 +35,7 @@ const getClientId = () => {
 };
 
 const Buy = () => {
-  const { addCoins } = useUserStore();
+  const syncFromSupabase = useUserStore((s) => s.syncFromSupabase);
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState(70);
   const [loading, setLoading] = useState(false);
@@ -90,11 +90,8 @@ const Buy = () => {
         setLoading(false);
 
         if (row.status === "success") {
-          addCoins(
-            row.amount,
-            "purchase",
-            `M-Pesa ${row.amount} KES${row.mpesa_receipt ? ` · ${row.mpesa_receipt}` : ""}`
-          );
+          // Coins are credited server-side by the M-Pesa callback. Just refresh.
+          await syncFromSupabase();
           setStatusMsg(null);
           toast.success(`✅ Payment confirmed — ${row.amount} coins added`);
         } else {
