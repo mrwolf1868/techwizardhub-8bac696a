@@ -1,7 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js/cors";
 import { createClient } from "npm:@supabase/supabase-js";
 
-// Daraja endpoints (selected at runtime by env)
 const ENDPOINTS = {
   sandbox: {
     oauth: "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
@@ -50,24 +49,43 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Load credentials: admin_settings first, env as fallback
-    let consumerKey = Deno.env.get("MPESA_CONSUMER_KEY") ?? "";
-    let consumerSecret = Deno.env.get("MPESA_CONSUMER_SECRET") ?? "";
-    let passkey = Deno.env.get("MPESA_PASSKEY") ?? "";
-    let shortcode = Deno.env.get("MPESA_SHORTCODE") ?? "";
-    let mpesaEnv: "sandbox" | "production" =
-      Deno.env.get("MPESA_ENV") === "production" ? "production" : "sandbox";
-
-    const cfgClient = createClient(
+    // Resolve user from JWT (so coins are credited to the right account on callback)
+    const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    let userId: string | null = null;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const { data: { user } } = await supabase.auth.getUser(token);
+      userId = user?.id ?? null;
+    }
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "You must be signed in to buy coins." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Load credentials from admin_settings (env as fallback)
+    let consumerKey = Deno.env.get("MPESA_CONSUMER_KEY") ?? "";
+    let consumerSecret = Deno.env.get("MPESA_CONSUMER_SECRET") ?? "";
+    let passkey = Deno.env.get("MPESA_PASSKEY") ?? "";
+    // BusinessShortCode (Head Office / Store Number) used for Lipa Na M-Pesa Online auth
+    let shortcode = Deno.env.get("MPESA_SHORTCODE") ?? "";
+    // Till number (PartyB) where money settles. For BuyGoods, this is required.
+    let tillNumber = Deno.env.get("MPESA_TILL") ?? "";
+    let mpesaEnv: "sandbox" | "production" =
+      Deno.env.get("MPESA_ENV") === "production" ? "production" : "sandbox";
+
     try {
-      const { data: rows } = await cfgClient
+      const { data: rows } = await supabase
         .from("admin_settings")
         .select("key, value")
         .in("key", [
+          "mpesa_shortcode",
           "mpesa_till",
           "mpesa_consumer_key",
           "mpesa_consumer_secret",
@@ -78,16 +96,17 @@ Deno.serve(async (req) => {
       (rows || []).forEach((r: { key: string; value: unknown }) => {
         map[r.key] = typeof r.value === "string" ? r.value : String(r.value ?? "");
       });
-      if (map.mpesa_till && /^\d{4,10}$/.test(map.mpesa_till)) shortcode = map.mpesa_till;
+      if (map.mpesa_shortcode && /^\d{4,10}$/.test(map.mpesa_shortcode)) shortcode = map.mpesa_shortcode;
+      if (map.mpesa_till && /^\d{4,10}$/.test(map.mpesa_till)) tillNumber = map.mpesa_till;
       if (map.mpesa_consumer_key) consumerKey = map.mpesa_consumer_key;
       if (map.mpesa_consumer_secret) consumerSecret = map.mpesa_consumer_secret;
       if (map.mpesa_passkey) passkey = map.mpesa_passkey;
       if (map.mpesa_env === "production" || map.mpesa_env === "sandbox") mpesaEnv = map.mpesa_env;
     } catch (_) { /* keep env fallback */ }
 
-    if (!consumerKey || !consumerSecret || !passkey || !shortcode) {
+    if (!consumerKey || !consumerSecret || !passkey || !shortcode || !tillNumber) {
       return new Response(JSON.stringify({
-        error: "M-Pesa is not configured. Admin must set credentials in Settings.",
+        error: "Payments are not yet available. Please try again shortly.",
       }), {
         status: 503,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -96,41 +115,41 @@ Deno.serve(async (req) => {
 
     const { oauth: OAUTH_URL, stk: STK_URL } = ENDPOINTS[mpesaEnv];
 
-    // 1) Get OAuth token
+    // 1) OAuth
     const auth = btoa(`${consumerKey}:${consumerSecret}`);
     const tokenResp = await fetch(OAUTH_URL, { headers: { Authorization: `Basic ${auth}` } });
     if (!tokenResp.ok) {
       const t = await tokenResp.text();
       console.error("OAuth failed:", t);
-      return new Response(JSON.stringify({ error: "M-Pesa auth failed" }), {
+      return new Response(JSON.stringify({ error: "Payment service unavailable" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     const { access_token } = await tokenResp.json();
 
-    // 2) Build STK push payload
+    // 2) Build BuyGoodsOnline STK push payload
     const ts = new Date()
       .toISOString()
       .replace(/[-:TZ.]/g, "")
-      .slice(0, 14); // YYYYMMDDHHMMSS
+      .slice(0, 14);
     const password = btoa(`${shortcode}${passkey}${ts}`);
 
-    const projectId = Deno.env.get("SUPABASE_URL")!;
-    const callbackUrl = `${projectId}/functions/v1/mpesa-callback`;
+    const projectUrl = Deno.env.get("SUPABASE_URL")!;
+    const callbackUrl = `${projectUrl}/functions/v1/mpesa-callback`;
 
     const stkPayload = {
-      BusinessShortCode: shortcode,
+      BusinessShortCode: shortcode,           // Head Office / Store number for auth
       Password: password,
       Timestamp: ts,
-      TransactionType: "CustomerPayBillOnline",
+      TransactionType: "CustomerBuyGoodsOnline",
       Amount: amt,
       PartyA: normalized,
-      PartyB: shortcode,
+      PartyB: tillNumber,                     // Till number where money lands
       PhoneNumber: normalized,
       CallBackURL: callbackUrl,
       AccountReference: "TechwizardHub",
-      TransactionDesc: `Coins top-up ${amt}`,
+      TransactionDesc: `Coins ${amt}`,
     };
 
     const stkResp = await fetch(STK_URL, {
@@ -148,26 +167,24 @@ Deno.serve(async (req) => {
     if (!stkResp.ok || stkData.errorCode) {
       return new Response(
         JSON.stringify({
-          error: stkData.errorMessage || "STK push failed",
-          details: stkData,
+          error: "We couldn't start the payment. Please try again.",
         }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // 3) Persist pending transaction
-    const { error: insErr } = await cfgClient.from("mpesa_transactions").insert({
+    // 3) Persist pending transaction (linked to user)
+    const { error: insErr } = await supabase.from("mpesa_transactions").insert({
       phone: normalized,
       amount: amt,
       checkout_request_id: stkData.CheckoutRequestID,
       merchant_request_id: stkData.MerchantRequestID,
       status: "pending",
       client_id: clientId,
+      user_id: userId,
     });
 
-    if (insErr) {
-      console.error("Insert error:", insErr);
-    }
+    if (insErr) console.error("Insert error:", insErr);
 
     return new Response(
       JSON.stringify({
@@ -179,7 +196,7 @@ Deno.serve(async (req) => {
     );
   } catch (e) {
     console.error("STK push error:", e);
-    return new Response(JSON.stringify({ error: String(e?.message || e) }), {
+    return new Response(JSON.stringify({ error: "Something went wrong. Please try again." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

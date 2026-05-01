@@ -100,6 +100,7 @@ export type Database = {
           amount: number
           checkout_request_id: string | null
           client_id: string
+          coins_credited: boolean
           created_at: string
           id: string
           merchant_request_id: string | null
@@ -108,11 +109,13 @@ export type Database = {
           result_desc: string | null
           status: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           amount: number
           checkout_request_id?: string | null
           client_id: string
+          coins_credited?: boolean
           created_at?: string
           id?: string
           merchant_request_id?: string | null
@@ -121,11 +124,13 @@ export type Database = {
           result_desc?: string | null
           status?: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           amount?: number
           checkout_request_id?: string | null
           client_id?: string
+          coins_credited?: boolean
           created_at?: string
           id?: string
           merchant_request_id?: string | null
@@ -134,6 +139,7 @@ export type Database = {
           result_desc?: string | null
           status?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -239,6 +245,42 @@ export type Database = {
           referred_by?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      services: {
+        Row: {
+          created_at: string
+          description: string | null
+          enabled: boolean
+          icon: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          icon?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          icon?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          url?: string
         }
         Relationships: []
       }

@@ -1,11 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { Home, Gamepad2, Rocket, Wallet, User } from "lucide-react";
+import { Home, Gamepad2, LayoutGrid, Wallet, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/", label: "Home", icon: Home },
   { to: "/games", label: "Games", icon: Gamepad2 },
-  { to: "/deploy", label: "Deploy", icon: Rocket },
+  { to: "/services", label: "Services", icon: LayoutGrid },
   { to: "/buy", label: "Buy", icon: Wallet },
   { to: "/profile", label: "Profile", icon: User },
 ];
