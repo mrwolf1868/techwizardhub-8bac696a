@@ -19,6 +19,10 @@ import {
   Power,
   Download,
   RefreshCcw,
+  Rocket,
+  Plus,
+  Pencil,
+  X,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,6 +96,7 @@ type Section =
   | "pairing"
   | "activity"
   | "payments"
+  | "services"
   | "settings";
 
 const Admin = () => {
@@ -159,6 +164,7 @@ const Admin = () => {
     { key: "pairing", label: "Pairing logs", icon: KeyRound },
     { key: "activity", label: "Activity", icon: ActivityIcon },
     { key: "payments", label: "Payments", icon: CheckCircle2 },
+    { key: "services", label: "Services", icon: Rocket },
     { key: "settings", label: "Settings", icon: SettingsIcon },
   ];
 
@@ -257,6 +263,7 @@ const Admin = () => {
           {section === "pairing" && <PairingPanel logs={pairing} />}
           {section === "activity" && <ActivityPanel logs={activity} profiles={profiles} />}
           {section === "payments" && <PaymentsPanel mpesa={mpesa} />}
+          {section === "services" && <ServicesPanel />}
           {section === "settings" && <SettingsPanel settings={settings} onSaved={load} />}
         </div>
       </main>
