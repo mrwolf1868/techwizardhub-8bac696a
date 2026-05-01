@@ -717,6 +717,7 @@ const PaymentsPanel = ({ mpesa }: { mpesa: MpesaTx[] }) => (
 
 /* ---------- Settings ---------- */
 const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown>; onSaved: () => void }) => {
+  const [shortcode, setShortcode] = useState("");
   const [till, setTill] = useState("");
   const [consumerKey, setConsumerKey] = useState("");
   const [consumerSecret, setConsumerSecret] = useState("");
@@ -728,7 +729,10 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
 
   const asStr = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
 
+  const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mpesa-callback`;
+
   useEffect(() => {
+    setShortcode(asStr(settings.mpesa_shortcode) || asStr(settings.mpesa_till));
     setTill(asStr(settings.mpesa_till));
     setConsumerKey(asStr(settings.mpesa_consumer_key));
     setConsumerSecret(asStr(settings.mpesa_consumer_secret));
@@ -754,11 +758,13 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
   };
 
   const saveAllMpesa = async () => {
-    if (!/^\d{4,10}$/.test(till)) return toast.error("Till/shortcode must be 4-10 digits");
+    if (!/^\d{4,10}$/.test(shortcode)) return toast.error("Business Shortcode must be 4-10 digits");
+    if (!/^\d{4,10}$/.test(till)) return toast.error("Till Number must be 4-10 digits");
     if (!consumerKey.trim() || !consumerSecret.trim() || !passkey.trim())
       return toast.error("Consumer key, secret and passkey are required");
     setSaving(true);
     const rows = [
+      { key: "mpesa_shortcode", value: shortcode },
       { key: "mpesa_till", value: till },
       { key: "mpesa_consumer_key", value: consumerKey.trim() },
       { key: "mpesa_consumer_secret", value: consumerSecret.trim() },
@@ -779,10 +785,11 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
     <div className="space-y-4">
       <Card className="bg-gradient-card p-4">
         <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
-          M-Pesa / BuyGoods credentials
+          M-Pesa BuyGoods (STK push) credentials
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Required to send STK push. Values are stored securely and used by the payment function.
+          All fields below are required to start STK push for Buy Goods Online.
+          Coins are only granted after the M-Pesa callback confirms the payment was successful.
         </p>
 
         <div className="mt-4 grid gap-3">
@@ -802,13 +809,7 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
                 </button>
               ))}
             </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Till / PayBill (BusinessShortCode)
-            </label>
-            <Input value={till} onChange={(e) => setTill(e.target.value)} placeholder="5529503" className="mt-1 font-mono" />
+            <p className="mt-1 text-[10px] text-muted-foreground">Use Sandbox for testing, Production for live payments.</p>
           </div>
 
           <div>
@@ -822,8 +823,32 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
           </div>
 
           <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Passkey (Lipa na M-Pesa Online)</label>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Business Shortcode (Head Office / Store Number)
+            </label>
+            <Input value={shortcode} onChange={(e) => setShortcode(e.target.value)} placeholder="7797502" className="mt-1 font-mono" />
+            <p className="mt-1 text-[10px] text-muted-foreground">Used to authenticate the STK push request.</p>
+          </div>
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Till Number (PartyB)
+            </label>
+            <Input value={till} onChange={(e) => setTill(e.target.value)} placeholder="9744173" className="mt-1 font-mono" />
+            <p className="mt-1 text-[10px] text-muted-foreground">Where customer payments actually settle.</p>
+          </div>
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Passkey (Lipa Na M-Pesa)</label>
             <Input type="password" value={passkey} onChange={(e) => setPasskey(e.target.value)} placeholder="••••••••••••" className="mt-1 font-mono" />
+          </div>
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Callback URL</label>
+            <Input value={callbackUrl} readOnly className="mt-1 font-mono text-xs" />
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Paste this exact URL into your Daraja app's STK callback configuration.
+            </p>
           </div>
 
           <Button disabled={saving} onClick={saveAllMpesa} className="mt-1">
@@ -857,6 +882,165 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
             Save
           </Button>
         </div>
+      </Card>
+    </div>
+  );
+};
+
+/* ---------- Services manager ---------- */
+type Service = {
+  id: string;
+  name: string;
+  description: string | null;
+  url: string;
+  icon: string | null;
+  sort_order: number;
+  enabled: boolean;
+};
+
+const ServicesPanel = () => {
+  const [items, setItems] = useState<Service[]>([]);
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
+  const [icon, setIcon] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    const { data } = await supabase
+      .from("services")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+    setItems((data || []) as Service[]);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const reset = () => {
+    setEditing(null);
+    setName(""); setUrl(""); setDescription(""); setIcon("");
+  };
+
+  const submit = async () => {
+    if (!name.trim() || !url.trim()) return toast.error("Name and link are required");
+    setSaving(true);
+    const payload = {
+      name: name.trim(),
+      url: url.trim(),
+      description: description.trim() || null,
+      icon: icon.trim() || null,
+    };
+    const { error } = editing
+      ? await supabase.from("services").update(payload).eq("id", editing)
+      : await supabase.from("services").insert(payload);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(editing ? "Service updated" : "Service added");
+    reset();
+    load();
+  };
+
+  const toggle = async (s: Service) => {
+    const { error } = await supabase.from("services").update({ enabled: !s.enabled }).eq("id", s.id);
+    if (error) return toast.error(error.message);
+    load();
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("Delete this service?")) return;
+    const { error } = await supabase.from("services").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Deleted");
+    load();
+  };
+
+  const startEdit = (s: Service) => {
+    setEditing(s.id);
+    setName(s.name);
+    setUrl(s.url);
+    setDescription(s.description || "");
+    setIcon(s.icon || "");
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card className="bg-gradient-card p-4">
+        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
+          {editing ? "Edit service" : "Add a service"}
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Services appear as buttons to all users. The link is hidden — users only see the name.
+        </p>
+        <div className="mt-3 grid gap-2">
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. WhatsApp Bot" className="mt-1" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Link / URL</label>
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… or /deploy" className="mt-1 font-mono" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Description (optional)</label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short tagline shown under name" className="mt-1" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Icon name (optional)</label>
+            <Input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="Rocket / MessageCircle / Globe" className="mt-1" />
+          </div>
+          <div className="flex gap-2">
+            <Button disabled={saving} onClick={submit}>
+              {editing ? "Save changes" : <><Plus className="mr-1 h-4 w-4" /> Add service</>}
+            </Button>
+            {editing && (
+              <Button variant="ghost" onClick={reset}>
+                <X className="mr-1 h-4 w-4" /> Cancel
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      <Card className="bg-gradient-card p-4">
+        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
+          All services ({items.length})
+        </h3>
+        <Table className="mt-3">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Link</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell className="font-medium">{s.name}</TableCell>
+                <TableCell className="max-w-[180px] truncate font-mono text-[11px] text-muted-foreground">{s.url}</TableCell>
+                <TableCell>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${s.enabled ? "bg-win/20 text-win" : "bg-muted text-muted-foreground"}`}>
+                    {s.enabled ? "live" : "hidden"}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button size="sm" variant="secondary" onClick={() => toggle(s)}>{s.enabled ? "Hide" : "Show"}</Button>
+                    <Button size="icon" variant="secondary" onClick={() => startEdit(s)} aria-label="Edit">
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button size="icon" variant="destructive" onClick={() => remove(s.id)} aria-label="Delete">
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );
