@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.password-reset-confirm]
 verify_jwt = false
+
+[functions.techwolf254-verify-transfer-token]
+verify_jwt = false
+
+[functions.techwolf254-get-service-price]
+verify_jwt = false

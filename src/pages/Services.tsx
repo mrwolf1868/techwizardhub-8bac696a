@@ -11,8 +11,10 @@ type Service = {
   id: string;
   name: string;
   description: string | null;
-  url: string;
   icon: string | null;
+  // Either a child slug (preferred — opens via hidden launcher) or an internal route
+  slug?: string | null;
+  internalRoute?: string | null;
 };
 
 const Services = () => {
@@ -23,26 +25,52 @@ const Services = () => {
   useEffect(() => {
     let active = true;
     (async () => {
-      const { data } = await supabase
-        .from("services")
-        .select("id, name, description, url, icon")
-        .eq("enabled", true)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true });
+      const [{ data: children }, { data: legacy }] = await Promise.all([
+        supabase
+          .from("child_projects")
+          .select("id, name, slug, enabled")
+          .eq("enabled", true)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("services")
+          .select("id, name, description, url, icon")
+          .eq("enabled", true)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true }),
+      ]);
       if (!active) return;
-      setItems((data || []) as Service[]);
+
+      const fromChildren: Service[] = (children || []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        description: null,
+        icon: null,
+        slug: c.slug,
+      }));
+      const fromLegacy: Service[] = (legacy || []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        icon: s.icon,
+        // Internal routes (e.g. /deploy) keep working; external URLs are NOT exposed
+        internalRoute: s.url?.startsWith("/") ? s.url : null,
+      }));
+      setItems([...fromChildren, ...fromLegacy]);
       setLoading(false);
     })();
     return () => { active = false; };
   }, []);
 
   const open = (s: Service) => {
-    if (s.url.startsWith("/")) {
-      navigate(s.url);
+    if (s.slug) {
+      navigate(`/s/${s.slug}`);
       return;
     }
-    // External link — open silently in new tab; no URL is shown to the user
-    window.open(s.url, "_blank", "noopener,noreferrer");
+    if (s.internalRoute) {
+      navigate(s.internalRoute);
+      return;
+    }
+    // No external URLs are surfaced to the user
   };
 
   const renderIcon = (name: string | null) => {
