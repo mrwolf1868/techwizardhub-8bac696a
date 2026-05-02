@@ -1052,6 +1052,292 @@ const ServicesPanel = () => {
   );
 };
 
+/* ---------- Service pricing manager ---------- */
+type Pricing = {
+  id: string;
+  service_key: string;
+  name: string;
+  price_coins: number;
+  continuation_price_coins: number;
+  enabled: boolean;
+};
+
+const PricingPanel = () => {
+  const [items, setItems] = useState<Pricing[]>([]);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [serviceKey, setServiceKey] = useState("");
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [contPrice, setContPrice] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    const { data } = await supabase
+      .from("service_pricing")
+      .select("*")
+      .order("created_at", { ascending: true });
+    setItems((data || []) as Pricing[]);
+  };
+  useEffect(() => { load(); }, []);
+
+  const reset = () => {
+    setEditing(null);
+    setServiceKey(""); setName(""); setPrice(""); setContPrice("");
+  };
+
+  const submit = async () => {
+    if (!serviceKey.trim() || !name.trim()) return toast.error("Key and name required");
+    setSaving(true);
+    const payload = {
+      service_key: serviceKey.trim(),
+      name: name.trim(),
+      price_coins: Math.max(0, Number(price) || 0),
+      continuation_price_coins: Math.max(0, Number(contPrice) || 0),
+    };
+    const { error } = editing
+      ? await supabase.from("service_pricing").update(payload).eq("id", editing)
+      : await supabase.from("service_pricing").insert(payload);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(editing ? "Pricing updated" : "Pricing added");
+    reset(); load();
+  };
+
+  const toggle = async (p: Pricing) => {
+    const { error } = await supabase.from("service_pricing").update({ enabled: !p.enabled }).eq("id", p.id);
+    if (error) return toast.error(error.message);
+    load();
+  };
+  const remove = async (id: string) => {
+    if (!confirm("Delete this pricing entry?")) return;
+    const { error } = await supabase.from("service_pricing").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    load();
+  };
+  const startEdit = (p: Pricing) => {
+    setEditing(p.id);
+    setServiceKey(p.service_key);
+    setName(p.name);
+    setPrice(String(p.price_coins));
+    setContPrice(String(p.continuation_price_coins));
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card className="bg-gradient-card p-4">
+        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
+          {editing ? "Edit price" : "Add service price"}
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Centralized price list used by all mini services via TECHWOLF254_API.
+        </p>
+        <div className="mt-3 grid gap-2">
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Service key</label>
+            <Input value={serviceKey} onChange={(e) => setServiceKey(e.target.value)} placeholder="e.g. bot_deploy" className="mt-1 font-mono" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Display name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. WhatsApp Bot Deploy" className="mt-1" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Price (coins)</label>
+              <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Continuation (coins)</label>
+              <Input type="number" value={contPrice} onChange={(e) => setContPrice(e.target.value)} className="mt-1" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button disabled={saving} onClick={submit}>
+              {editing ? "Save" : <><Plus className="mr-1 h-4 w-4" /> Add</>}
+            </Button>
+            {editing && <Button variant="ghost" onClick={reset}><X className="mr-1 h-4 w-4" /> Cancel</Button>}
+          </div>
+        </div>
+      </Card>
+
+      <Card className="bg-gradient-card p-4">
+        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
+          All prices ({items.length})
+        </h3>
+        <Table className="mt-3">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Key</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Cont.</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((p) => (
+              <TableRow key={p.id}>
+                <TableCell className="font-mono text-[11px]">{p.service_key}</TableCell>
+                <TableCell>{p.name}</TableCell>
+                <TableCell>{p.price_coins}</TableCell>
+                <TableCell>{p.continuation_price_coins}</TableCell>
+                <TableCell>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${p.enabled ? "bg-win/20 text-win" : "bg-muted text-muted-foreground"}`}>
+                    {p.enabled ? "live" : "off"}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button size="sm" variant="secondary" onClick={() => toggle(p)}>{p.enabled ? "Disable" : "Enable"}</Button>
+                    <Button size="icon" variant="secondary" onClick={() => startEdit(p)} aria-label="Edit"><Pencil className="h-3 w-3" /></Button>
+                    <Button size="icon" variant="destructive" onClick={() => remove(p.id)} aria-label="Delete"><Trash2 className="h-3 w-3" /></Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
+  );
+};
+
+/* ---------- Child projects (hidden mini-service registry) ---------- */
+type ChildProject = {
+  id: string;
+  slug: string;
+  name: string;
+  url: string;
+  service_key: string | null;
+  enabled: boolean;
+};
+
+const ChildProjectsPanel = () => {
+  const [items, setItems] = useState<ChildProject[]>([]);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [slug, setSlug] = useState("");
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const [serviceKey, setServiceKey] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    const { data } = await supabase.from("child_projects").select("*").order("created_at", { ascending: true });
+    setItems((data || []) as ChildProject[]);
+  };
+  useEffect(() => { load(); }, []);
+
+  const reset = () => { setEditing(null); setSlug(""); setName(""); setUrl(""); setServiceKey(""); };
+
+  const submit = async () => {
+    if (!slug.trim() || !name.trim() || !url.trim()) return toast.error("Slug, name, URL required");
+    setSaving(true);
+    const payload = {
+      slug: slug.trim().toLowerCase(),
+      name: name.trim(),
+      url: url.trim(),
+      service_key: serviceKey.trim() || null,
+    };
+    const { error } = editing
+      ? await supabase.from("child_projects").update(payload).eq("id", editing)
+      : await supabase.from("child_projects").insert(payload);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(editing ? "Updated" : "Added");
+    reset(); load();
+  };
+  const toggle = async (c: ChildProject) => {
+    const { error } = await supabase.from("child_projects").update({ enabled: !c.enabled }).eq("id", c.id);
+    if (error) return toast.error(error.message);
+    load();
+  };
+  const remove = async (id: string) => {
+    if (!confirm("Delete this child project?")) return;
+    const { error } = await supabase.from("child_projects").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    load();
+  };
+  const startEdit = (c: ChildProject) => {
+    setEditing(c.id);
+    setSlug(c.slug); setName(c.name); setUrl(c.url); setServiceKey(c.service_key || "");
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card className="bg-gradient-card p-4">
+        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
+          {editing ? "Edit child project" : "Register child project"}
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          URLs are kept hidden. Users open the service via /s/&lt;slug&gt; and never see the underlying link.
+        </p>
+        <div className="mt-3 grid gap-2">
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Slug</label>
+            <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="bot, paywall, vault" className="mt-1 font-mono" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Display name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="WhatsApp Bot" className="mt-1" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Hidden URL</label>
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://child.example.com" className="mt-1 font-mono" />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Linked service key (optional)</label>
+            <Input value={serviceKey} onChange={(e) => setServiceKey(e.target.value)} placeholder="bot_deploy" className="mt-1 font-mono" />
+          </div>
+          <div className="flex gap-2">
+            <Button disabled={saving} onClick={submit}>
+              {editing ? "Save" : <><Plus className="mr-1 h-4 w-4" /> Add</>}
+            </Button>
+            {editing && <Button variant="ghost" onClick={reset}><X className="mr-1 h-4 w-4" /> Cancel</Button>}
+          </div>
+        </div>
+      </Card>
+
+      <Card className="bg-gradient-card p-4">
+        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
+          Registered ({items.length})
+        </h3>
+        <Table className="mt-3">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Slug</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Service key</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell className="font-mono text-[11px]">{c.slug}</TableCell>
+                <TableCell>{c.name}</TableCell>
+                <TableCell className="font-mono text-[11px] text-muted-foreground">{c.service_key || "—"}</TableCell>
+                <TableCell>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${c.enabled ? "bg-win/20 text-win" : "bg-muted text-muted-foreground"}`}>
+                    {c.enabled ? "live" : "off"}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button size="sm" variant="secondary" onClick={() => toggle(c)}>{c.enabled ? "Disable" : "Enable"}</Button>
+                    <Button size="icon" variant="secondary" onClick={() => startEdit(c)} aria-label="Edit"><Pencil className="h-3 w-3" /></Button>
+                    <Button size="icon" variant="destructive" onClick={() => remove(c.id)} aria-label="Delete"><Trash2 className="h-3 w-3" /></Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
+  );
+};
+
 /* ---------- helpers ---------- */
 const formatDuration = (ms: number) => {
   const s = Math.floor(ms / 1000);
