@@ -97,6 +97,8 @@ type Section =
   | "activity"
   | "payments"
   | "services"
+  | "pricing"
+  | "child"
   | "settings";
 
 const Admin = () => {
@@ -165,6 +167,8 @@ const Admin = () => {
     { key: "activity", label: "Activity", icon: ActivityIcon },
     { key: "payments", label: "Payments", icon: CheckCircle2 },
     { key: "services", label: "Services", icon: Rocket },
+    { key: "pricing", label: "Service pricing", icon: SettingsIcon },
+    { key: "child", label: "Child projects", icon: Rocket },
     { key: "settings", label: "Settings", icon: SettingsIcon },
   ];
 
@@ -264,6 +268,8 @@ const Admin = () => {
           {section === "activity" && <ActivityPanel logs={activity} profiles={profiles} />}
           {section === "payments" && <PaymentsPanel mpesa={mpesa} />}
           {section === "services" && <ServicesPanel />}
+          {section === "pricing" && <PricingPanel />}
+          {section === "child" && <ChildProjectsPanel />}
           {section === "settings" && <SettingsPanel settings={settings} onSaved={load} />}
         </div>
       </main>
