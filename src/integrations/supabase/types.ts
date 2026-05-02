@@ -95,6 +95,39 @@ export type Database = {
         }
         Relationships: []
       }
+      child_projects: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          service_key: string | null
+          slug: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          service_key?: string | null
+          slug: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          service_key?: string | null
+          slug?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       mpesa_transactions: {
         Row: {
           amount: number
@@ -248,6 +281,72 @@ export type Database = {
         }
         Relationships: []
       }
+      service_pricing: {
+        Row: {
+          continuation_price_coins: number
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          price_coins: number
+          service_key: string
+          updated_at: string
+        }
+        Insert: {
+          continuation_price_coins?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          price_coins?: number
+          service_key: string
+          updated_at?: string
+        }
+        Update: {
+          continuation_price_coins?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          price_coins?: number
+          service_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      service_usage: {
+        Row: {
+          created_at: string
+          free_trial_expired: boolean
+          id: string
+          paid_continuation: boolean
+          service_key: string
+          updated_at: string
+          usage_start_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          free_trial_expired?: boolean
+          id?: string
+          paid_continuation?: boolean
+          service_key: string
+          updated_at?: string
+          usage_start_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          free_trial_expired?: boolean
+          id?: string
+          paid_continuation?: boolean
+          service_key?: string
+          updated_at?: string
+          usage_start_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           created_at: string
@@ -307,6 +406,36 @@ export type Database = {
           description?: string
           id?: string
           type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      transfer_tokens: {
+        Row: {
+          child_slug: string
+          consumed: boolean
+          created_at: string
+          expires_at: string
+          id: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          child_slug: string
+          consumed?: boolean
+          created_at?: string
+          expires_at: string
+          id?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          child_slug?: string
+          consumed?: boolean
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
           user_id?: string
         }
         Relationships: []
