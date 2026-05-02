@@ -13,6 +13,7 @@ import Dive from "./pages/Dive.tsx";
 import LuckySpin from "./pages/LuckySpin.tsx";
 import Deploy from "./pages/Deploy.tsx";
 import Services from "./pages/Services.tsx";
+import ServiceLauncher from "./pages/ServiceLauncher.tsx";
 import Buy from "./pages/Buy.tsx";
 import Profile from "./pages/Profile.tsx";
 import Login from "./pages/Login.tsx";
@@ -68,6 +69,7 @@ const App = () => (
           <Route path="/games/spin" element={<LuckySpin />} />
           <Route path="/deploy" element={<Deploy />} />
           <Route path="/services" element={<Services />} />
+          <Route path="/s/:slug" element={<ServiceLauncher />} />
           <Route path="/buy" element={<Buy />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin" element={<Admin />} />
