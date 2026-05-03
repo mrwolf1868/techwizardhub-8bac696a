@@ -59,8 +59,17 @@ const ServiceLauncher = () => {
         setError("Could not start session"); setLoading(false); return;
       }
 
-      const sep = c.url.includes("#") ? "&" : "#";
-      const url = `${c.url}${sep}twh_token=${encodeURIComponent(tokenRes.token)}&slug=${encodeURIComponent(slug)}`;
+      // Append as query params so SPAs using hash routing keep working.
+      let url: string;
+      try {
+        const u = new URL(c.url);
+        u.searchParams.set("twh_token", tokenRes.token);
+        u.searchParams.set("slug", slug);
+        url = u.toString();
+      } catch {
+        const sep = c.url.includes("?") ? "&" : "?";
+        url = `${c.url}${sep}twh_token=${encodeURIComponent(tokenRes.token)}&slug=${encodeURIComponent(slug)}`;
+      }
       if (!active) return;
       setIframeUrl(url);
       setLoading(false);
@@ -139,7 +148,8 @@ const ServiceLauncher = () => {
             title={child?.name || "Service"}
             src={iframeUrl}
             referrerPolicy="no-referrer"
-            sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-modals"
+            sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-presentation allow-top-navigation-by-user-activation"
+            allow="clipboard-read; clipboard-write; microphone; camera; autoplay; fullscreen"
             className="absolute inset-0 h-full w-full border-0"
           />
         )}

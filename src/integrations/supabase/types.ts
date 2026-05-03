@@ -97,6 +97,8 @@ export type Database = {
       }
       child_projects: {
         Row: {
+          continuation_duration_unit: string
+          continuation_duration_value: number
           continuation_price_coins: number
           created_at: string
           description: string | null
@@ -113,6 +115,8 @@ export type Database = {
           url: string
         }
         Insert: {
+          continuation_duration_unit?: string
+          continuation_duration_value?: number
           continuation_price_coins?: number
           created_at?: string
           description?: string | null
@@ -129,6 +133,8 @@ export type Database = {
           url: string
         }
         Update: {
+          continuation_duration_unit?: string
+          continuation_duration_value?: number
           continuation_price_coins?: number
           created_at?: string
           description?: string | null

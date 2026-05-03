@@ -898,6 +898,8 @@ type ServiceRow = {
   price_coins: number;
   continuation_price_coins: number;
   free_trial_seconds: number;
+  continuation_duration_value: number;
+  continuation_duration_unit: string;
   enabled: boolean;
 };
 
@@ -912,6 +914,8 @@ const ServicesPanel = () => {
   const [price, setPrice] = useState("0");
   const [contPrice, setContPrice] = useState("0");
   const [freeSecs, setFreeSecs] = useState("30");
+  const [contDurValue, setContDurValue] = useState("1");
+  const [contDurUnit, setContDurUnit] = useState("days");
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -929,6 +933,7 @@ const ServicesPanel = () => {
     setEditing(null);
     setSlug(""); setName(""); setUrl(""); setDescription(""); setIcon("");
     setPrice("0"); setContPrice("0"); setFreeSecs("30");
+    setContDurValue("1"); setContDurUnit("days");
   };
 
   const submit = async () => {
@@ -944,6 +949,8 @@ const ServicesPanel = () => {
       price_coins: Math.max(0, Number(price) || 0),
       continuation_price_coins: Math.max(0, Number(contPrice) || 0),
       free_trial_seconds: Math.max(5, Number(freeSecs) || 30),
+      continuation_duration_value: Math.max(1, Number(contDurValue) || 1),
+      continuation_duration_unit: ["days", "weeks", "months"].includes(contDurUnit) ? contDurUnit : "days",
     };
     const { error } = editing
       ? await supabase.from("child_projects").update(payload).eq("id", editing)
@@ -979,6 +986,8 @@ const ServicesPanel = () => {
     setPrice(String(s.price_coins ?? 0));
     setContPrice(String(s.continuation_price_coins ?? 0));
     setFreeSecs(String(s.free_trial_seconds ?? 30));
+    setContDurValue(String(s.continuation_duration_value ?? 1));
+    setContDurUnit(s.continuation_duration_unit ?? "days");
   };
 
   return (
@@ -1027,6 +1036,29 @@ const ServicesPanel = () => {
             <div>
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Free trial (sec)</label>
               <Input type="number" value={freeSecs} onChange={(e) => setFreeSecs(e.target.value)} className="mt-1" />
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Continuation duration (how long the paid unlock lasts)
+            </label>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <Input
+                type="number"
+                min={1}
+                value={contDurValue}
+                onChange={(e) => setContDurValue(e.target.value)}
+                placeholder="e.g. 7"
+              />
+              <select
+                value={contDurUnit}
+                onChange={(e) => setContDurUnit(e.target.value)}
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="days">Days</option>
+                <option value="weeks">Weeks</option>
+                <option value="months">Months</option>
+              </select>
             </div>
           </div>
           <div className="flex gap-2">
