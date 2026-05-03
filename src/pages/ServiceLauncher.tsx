@@ -59,8 +59,17 @@ const ServiceLauncher = () => {
         setError("Could not start session"); setLoading(false); return;
       }
 
-      const sep = c.url.includes("#") ? "&" : "#";
-      const url = `${c.url}${sep}twh_token=${encodeURIComponent(tokenRes.token)}&slug=${encodeURIComponent(slug)}`;
+      // Append as query params so SPAs using hash routing keep working.
+      let url: string;
+      try {
+        const u = new URL(c.url);
+        u.searchParams.set("twh_token", tokenRes.token);
+        u.searchParams.set("slug", slug);
+        url = u.toString();
+      } catch {
+        const sep = c.url.includes("?") ? "&" : "?";
+        url = `${c.url}${sep}twh_token=${encodeURIComponent(tokenRes.token)}&slug=${encodeURIComponent(slug)}`;
+      }
       if (!active) return;
       setIframeUrl(url);
       setLoading(false);
