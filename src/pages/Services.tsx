@@ -9,12 +9,10 @@ import { Rocket, ArrowRight } from "lucide-react";
 
 type Service = {
   id: string;
+  slug: string;
   name: string;
   description: string | null;
   icon: string | null;
-  // Either a child slug (preferred — opens via hidden launcher) or an internal route
-  slug?: string | null;
-  internalRoute?: string | null;
 };
 
 const Services = () => {
@@ -25,53 +23,18 @@ const Services = () => {
   useEffect(() => {
     let active = true;
     (async () => {
-      const [{ data: children }, { data: legacy }] = await Promise.all([
-        supabase
-          .from("child_projects")
-          .select("id, name, slug, enabled")
-          .eq("enabled", true)
-          .order("created_at", { ascending: true }),
-        supabase
-          .from("services")
-          .select("id, name, description, url, icon")
-          .eq("enabled", true)
-          .order("sort_order", { ascending: true })
-          .order("created_at", { ascending: true }),
-      ]);
+      const { data } = await supabase
+        .from("child_projects")
+        .select("id, slug, name, description, icon, enabled, sort_order")
+        .eq("enabled", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
       if (!active) return;
-
-      const fromChildren: Service[] = (children || []).map((c) => ({
-        id: c.id,
-        name: c.name,
-        description: null,
-        icon: null,
-        slug: c.slug,
-      }));
-      const fromLegacy: Service[] = (legacy || []).map((s) => ({
-        id: s.id,
-        name: s.name,
-        description: s.description,
-        icon: s.icon,
-        // Internal routes (e.g. /deploy) keep working; external URLs are NOT exposed
-        internalRoute: s.url?.startsWith("/") ? s.url : null,
-      }));
-      setItems([...fromChildren, ...fromLegacy]);
+      setItems((data || []) as Service[]);
       setLoading(false);
     })();
     return () => { active = false; };
   }, []);
-
-  const open = (s: Service) => {
-    if (s.slug) {
-      navigate(`/s/${s.slug}`);
-      return;
-    }
-    if (s.internalRoute) {
-      navigate(s.internalRoute);
-      return;
-    }
-    // No external URLs are surfaced to the user
-  };
 
   const renderIcon = (name: string | null) => {
     const Lookup = (name && (Icons as unknown as Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>>)[name]) || Rocket;
@@ -98,7 +61,7 @@ const Services = () => {
           <Card key={s.id} className="border-primary/20 bg-gradient-card p-4 shadow-card">
             <button
               type="button"
-              onClick={() => open(s)}
+              onClick={() => navigate(`/s/${s.slug}`)}
               className="flex w-full items-center gap-3 text-left"
             >
               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-primary shadow-glow">

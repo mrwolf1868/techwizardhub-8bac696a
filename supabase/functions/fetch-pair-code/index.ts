@@ -127,7 +127,16 @@ Deno.serve(async (req) => {
       }
     } catch (_) { /* fallback */ }
 
-    if (!code) code = generateFallbackCode(digits);
+    if (!code) {
+      await admin.from("pairing_logs").insert({
+        user_id: userId, phone_number: digits,
+        status: "failed", detail: "Upstream did not return a pairing code",
+      });
+      return new Response(
+        JSON.stringify({ error: "Pairing service is busy. Please try again in a moment." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     await admin.from("pairing_logs").insert({
       user_id: userId, phone_number: digits,

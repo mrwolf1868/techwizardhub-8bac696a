@@ -2,93 +2,122 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { ArrowLeft, Loader2, Coins } from "lucide-react";
+import { toast } from "sonner";
+import { useUserStore } from "@/store/userStore";
 
-/**
- * Hidden launcher for child mini-services.
- * - Resolves slug -> child project (URL is fetched server-side, never shown)
- * - Mints a one-time transfer token via TECHWOLF254_API
- * - Loads the child app inside an iframe so the parent URL bar stays on TechwizardHub
- *
- * Note: the child site must allow being embedded by this domain (no X-Frame-Options/CSP block).
- * If the child blocks framing, the iframe will fail silently — that is a hosting-side decision
- * we cannot bypass from here.
- */
+type Child = {
+  id: string;
+  slug: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  free_trial_seconds: number;
+  continuation_price_coins: number;
+};
+
 const ServiceLauncher = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { coins, syncFromSupabase } = useUserStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [iframeUrl, setIframeUrl] = useState<string | null>(null);
-  const [serviceName, setServiceName] = useState<string>("Service");
+  const [child, setChild] = useState<Child | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [paywall, setPaywall] = useState(false);
+  const [paid, setPaid] = useState(false);
+  const [paying, setPaying] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      if (!slug) {
-        setError("Service not found");
-        setLoading(false);
-        return;
-      }
-
+      if (!slug) { setError("Service not found"); setLoading(false); return; }
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/login");
-        return;
-      }
+      if (!session) { navigate("/login"); return; }
 
-      // Fetch child project (RLS allows authed reads of enabled rows)
-      const { data: child, error: childErr } = await supabase
+      const { data: c, error: cErr } = await supabase
         .from("child_projects")
-        .select("slug, name, url, enabled")
+        .select("id, slug, name, url, enabled, free_trial_seconds, continuation_price_coins")
         .eq("slug", slug)
         .maybeSingle();
-      if (childErr || !child || !child.enabled) {
+      if (cErr || !c || !c.enabled) {
         if (!active) return;
-        setError("Service unavailable");
-        setLoading(false);
-        return;
+        setError("Service unavailable"); setLoading(false); return;
       }
-      setServiceName(child.name);
+      setChild(c as Child);
+      setSecondsLeft(c.free_trial_seconds || 30);
 
-      // Mint transfer token
       const { data: tokenRes, error: tokErr } = await supabase.functions.invoke(
         "techwolf254-get-transfer-token",
         { body: { child_slug: slug } }
       );
       if (tokErr || !tokenRes?.token) {
         if (!active) return;
-        setError("Could not start session");
-        setLoading(false);
-        return;
+        setError("Could not start session"); setLoading(false); return;
       }
 
-      // Build embedded URL — token rides in URL fragment so it's not in HTTP referer/server logs
-      const sep = child.url.includes("#") ? "&" : "#";
-      const url = `${child.url}${sep}twh_token=${encodeURIComponent(tokenRes.token)}&slug=${encodeURIComponent(slug)}`;
+      const sep = c.url.includes("#") ? "&" : "#";
+      const url = `${c.url}${sep}twh_token=${encodeURIComponent(tokenRes.token)}&slug=${encodeURIComponent(slug)}`;
       if (!active) return;
       setIframeUrl(url);
       setLoading(false);
+
+      // Record usage start (best-effort)
+      await supabase.from("service_usage").insert({
+        user_id: session.user.id,
+        service_key: slug,
+      });
     })();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [slug, navigate]);
+
+  // Free-trial countdown
+  useEffect(() => {
+    if (paid || paywall || secondsLeft == null) return;
+    if (secondsLeft <= 0) { setPaywall(true); return; }
+    const t = setTimeout(() => setSecondsLeft((s) => (s == null ? null : s - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [secondsLeft, paywall, paid]);
+
+  const payToContinue = async () => {
+    if (!child) return;
+    const cost = child.continuation_price_coins || 0;
+    if (cost <= 0) { setPaid(true); setPaywall(false); return; }
+    if (coins < cost) { toast.error(`Insufficient balance. You need ${cost} coins.`); return; }
+    setPaying(true);
+    const { data, error } = await supabase.functions.invoke("techwolf254-deduct-wallet", {
+      body: {
+        amount: cost,
+        type: "service",
+        description: `Continue: ${child.name}`,
+      },
+    });
+    setPaying(false);
+    if (error || (data as { error?: string })?.error) {
+      const msg = (data as { error?: string })?.error || error?.message || "Payment failed";
+      toast.error(msg);
+      return;
+    }
+    toast.success("Payment successful — enjoy!");
+    setPaid(true);
+    setPaywall(false);
+    await syncFromSupabase();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
       <div className="flex items-center justify-between border-b border-border bg-card px-3 py-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("/services")}
-          className="gap-1"
-        >
+        <Button variant="ghost" size="sm" onClick={() => navigate("/services")} className="gap-1">
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
-        <div className="font-display text-sm font-bold">{serviceName}</div>
-        <div className="w-16" />
+        <div className="font-display text-sm font-bold">{child?.name || "Service"}</div>
+        <div className="min-w-16 text-right text-[11px] text-muted-foreground">
+          {!paid && secondsLeft != null && secondsLeft > 0 && !paywall && `Free: ${secondsLeft}s`}
+          {paid && "Unlocked"}
+        </div>
       </div>
 
       <div className="relative flex-1 bg-background">
@@ -107,13 +136,48 @@ const ServiceLauncher = () => {
         {iframeUrl && (
           <iframe
             ref={iframeRef}
-            title={serviceName}
+            title={child?.name || "Service"}
             src={iframeUrl}
-            // Prevent leaking the child URL via referrer; sandbox keeps it isolated but functional
             referrerPolicy="no-referrer"
             sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-modals"
             className="absolute inset-0 h-full w-full border-0"
           />
+        )}
+
+        {paywall && !paid && (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-background/90 backdrop-blur p-6">
+            <Card className="w-full max-w-sm border-primary/30 bg-gradient-card p-6 text-center shadow-glow">
+              <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary shadow-glow">
+                <Coins className="h-7 w-7 text-primary-foreground" />
+              </div>
+              <h3 className="mt-3 font-display text-lg font-black">Free trial ended</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Continue using <strong>{child?.name}</strong> by paying from your balance.
+              </p>
+              <div className="mt-4 rounded-lg border border-border/60 bg-background/40 p-3">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Cost</div>
+                <div className="font-display text-2xl font-black text-coin">
+                  {child?.continuation_price_coins ?? 0} coins
+                </div>
+                <div className="mt-1 text-[10px] text-muted-foreground">Your balance: {coins}</div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button variant="ghost" className="flex-1" onClick={() => navigate("/services")}>Exit</Button>
+                <Button
+                  className="flex-1 bg-gradient-primary font-bold shadow-glow"
+                  disabled={paying || coins < (child?.continuation_price_coins ?? 0)}
+                  onClick={payToContinue}
+                >
+                  {paying ? "Processing…" : coins < (child?.continuation_price_coins ?? 0) ? "Insufficient" : "Pay & continue"}
+                </Button>
+              </div>
+              {coins < (child?.continuation_price_coins ?? 0) && (
+                <Button variant="link" size="sm" className="mt-2" onClick={() => navigate("/buy")}>
+                  Top up coins →
+                </Button>
+              )}
+            </Card>
+          </div>
         )}
       </div>
     </div>
