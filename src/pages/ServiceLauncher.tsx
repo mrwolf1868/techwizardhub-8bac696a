@@ -148,7 +148,8 @@ const ServiceLauncher = () => {
             title={child?.name || "Service"}
             src={iframeUrl}
             referrerPolicy="no-referrer"
-            sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-modals"
+            sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-presentation allow-top-navigation-by-user-activation"
+            allow="clipboard-read; clipboard-write; microphone; camera; autoplay; fullscreen"
             className="absolute inset-0 h-full w-full border-0"
           />
         )}
