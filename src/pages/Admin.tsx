@@ -898,6 +898,8 @@ type ServiceRow = {
   price_coins: number;
   continuation_price_coins: number;
   free_trial_seconds: number;
+  continuation_duration_value: number;
+  continuation_duration_unit: string;
   enabled: boolean;
 };
 
@@ -912,6 +914,8 @@ const ServicesPanel = () => {
   const [price, setPrice] = useState("0");
   const [contPrice, setContPrice] = useState("0");
   const [freeSecs, setFreeSecs] = useState("30");
+  const [contDurValue, setContDurValue] = useState("1");
+  const [contDurUnit, setContDurUnit] = useState("days");
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
