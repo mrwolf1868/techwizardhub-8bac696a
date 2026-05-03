@@ -97,32 +97,50 @@ export type Database = {
       }
       child_projects: {
         Row: {
+          continuation_price_coins: number
           created_at: string
+          description: string | null
           enabled: boolean
+          free_trial_seconds: number
+          icon: string | null
           id: string
           name: string
+          price_coins: number
           service_key: string | null
           slug: string
+          sort_order: number
           updated_at: string
           url: string
         }
         Insert: {
+          continuation_price_coins?: number
           created_at?: string
+          description?: string | null
           enabled?: boolean
+          free_trial_seconds?: number
+          icon?: string | null
           id?: string
           name: string
+          price_coins?: number
           service_key?: string | null
           slug: string
+          sort_order?: number
           updated_at?: string
           url: string
         }
         Update: {
+          continuation_price_coins?: number
           created_at?: string
+          description?: string | null
           enabled?: boolean
+          free_trial_seconds?: number
+          icon?: string | null
           id?: string
           name?: string
+          price_coins?: number
           service_key?: string | null
           slug?: string
+          sort_order?: number
           updated_at?: string
           url?: string
         }
