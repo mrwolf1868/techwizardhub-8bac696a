@@ -97,8 +97,6 @@ type Section =
   | "activity"
   | "payments"
   | "services"
-  | "pricing"
-  | "child"
   | "settings";
 
 const Admin = () => {
