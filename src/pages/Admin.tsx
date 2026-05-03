@@ -933,6 +933,7 @@ const ServicesPanel = () => {
     setEditing(null);
     setSlug(""); setName(""); setUrl(""); setDescription(""); setIcon("");
     setPrice("0"); setContPrice("0"); setFreeSecs("30");
+    setContDurValue("1"); setContDurUnit("days");
   };
 
   const submit = async () => {
@@ -948,6 +949,8 @@ const ServicesPanel = () => {
       price_coins: Math.max(0, Number(price) || 0),
       continuation_price_coins: Math.max(0, Number(contPrice) || 0),
       free_trial_seconds: Math.max(5, Number(freeSecs) || 30),
+      continuation_duration_value: Math.max(1, Number(contDurValue) || 1),
+      continuation_duration_unit: ["days", "weeks", "months"].includes(contDurUnit) ? contDurUnit : "days",
     };
     const { error } = editing
       ? await supabase.from("child_projects").update(payload).eq("id", editing)
