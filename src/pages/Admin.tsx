@@ -986,6 +986,8 @@ const ServicesPanel = () => {
     setPrice(String(s.price_coins ?? 0));
     setContPrice(String(s.continuation_price_coins ?? 0));
     setFreeSecs(String(s.free_trial_seconds ?? 30));
+    setContDurValue(String(s.continuation_duration_value ?? 1));
+    setContDurUnit(s.continuation_duration_unit ?? "days");
   };
 
   return (
