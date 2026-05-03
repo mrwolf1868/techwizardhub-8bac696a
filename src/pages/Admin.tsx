@@ -167,8 +167,6 @@ const Admin = () => {
     { key: "activity", label: "Activity", icon: ActivityIcon },
     { key: "payments", label: "Payments", icon: CheckCircle2 },
     { key: "services", label: "Services", icon: Rocket },
-    { key: "pricing", label: "Service pricing", icon: SettingsIcon },
-    { key: "child", label: "Child projects", icon: Rocket },
     { key: "settings", label: "Settings", icon: SettingsIcon },
   ];
 
