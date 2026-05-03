@@ -893,54 +893,67 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
   );
 };
 
-/* ---------- Services manager ---------- */
-type Service = {
+/* ---------- Services manager (unified with child_projects) ---------- */
+type ServiceRow = {
   id: string;
+  slug: string;
   name: string;
-  description: string | null;
   url: string;
+  description: string | null;
   icon: string | null;
-  sort_order: number;
+  price_coins: number;
+  continuation_price_coins: number;
+  free_trial_seconds: number;
   enabled: boolean;
 };
 
 const ServicesPanel = () => {
-  const [items, setItems] = useState<Service[]>([]);
+  const [items, setItems] = useState<ServiceRow[]>([]);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("");
-  const [editing, setEditing] = useState<string | null>(null);
+  const [price, setPrice] = useState("0");
+  const [contPrice, setContPrice] = useState("0");
+  const [freeSecs, setFreeSecs] = useState("30");
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     const { data } = await supabase
-      .from("services")
+      .from("child_projects")
       .select("*")
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
-    setItems((data || []) as Service[]);
+    setItems((data || []) as ServiceRow[]);
   };
 
   useEffect(() => { load(); }, []);
 
   const reset = () => {
     setEditing(null);
-    setName(""); setUrl(""); setDescription(""); setIcon("");
+    setSlug(""); setName(""); setUrl(""); setDescription(""); setIcon("");
+    setPrice("0"); setContPrice("0"); setFreeSecs("30");
   };
 
   const submit = async () => {
-    if (!name.trim() || !url.trim()) return toast.error("Name and link are required");
+    if (!slug.trim() || !name.trim() || !url.trim())
+      return toast.error("Slug, name and link are required");
     setSaving(true);
     const payload = {
+      slug: slug.trim().toLowerCase(),
       name: name.trim(),
       url: url.trim(),
       description: description.trim() || null,
       icon: icon.trim() || null,
+      price_coins: Math.max(0, Number(price) || 0),
+      continuation_price_coins: Math.max(0, Number(contPrice) || 0),
+      free_trial_seconds: Math.max(5, Number(freeSecs) || 30),
     };
     const { error } = editing
-      ? await supabase.from("services").update(payload).eq("id", editing)
-      : await supabase.from("services").insert(payload);
+      ? await supabase.from("child_projects").update(payload).eq("id", editing)
+      : await supabase.from("child_projects").insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(editing ? "Service updated" : "Service added");
@@ -948,26 +961,30 @@ const ServicesPanel = () => {
     load();
   };
 
-  const toggle = async (s: Service) => {
-    const { error } = await supabase.from("services").update({ enabled: !s.enabled }).eq("id", s.id);
+  const toggle = async (s: ServiceRow) => {
+    const { error } = await supabase.from("child_projects").update({ enabled: !s.enabled }).eq("id", s.id);
     if (error) return toast.error(error.message);
     load();
   };
 
   const remove = async (id: string) => {
     if (!confirm("Delete this service?")) return;
-    const { error } = await supabase.from("services").delete().eq("id", id);
+    const { error } = await supabase.from("child_projects").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
     load();
   };
 
-  const startEdit = (s: Service) => {
+  const startEdit = (s: ServiceRow) => {
     setEditing(s.id);
+    setSlug(s.slug);
     setName(s.name);
     setUrl(s.url);
     setDescription(s.description || "");
     setIcon(s.icon || "");
+    setPrice(String(s.price_coins ?? 0));
+    setContPrice(String(s.continuation_price_coins ?? 0));
+    setFreeSecs(String(s.free_trial_seconds ?? 30));
   };
 
   return (
@@ -977,24 +994,46 @@ const ServicesPanel = () => {
           {editing ? "Edit service" : "Add a service"}
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Services appear as buttons to all users. The link is hidden — users only see the name.
+          Users see only the name. The link stays hidden — they open it via /s/&lt;slug&gt;.
         </p>
         <div className="mt-3 grid gap-2">
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Name</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. WhatsApp Bot" className="mt-1" />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Slug</label>
+              <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="bot, vault" className="mt-1 font-mono" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Name</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="WhatsApp Bot" className="mt-1" />
+            </div>
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Link / URL</label>
-            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… or /deploy" className="mt-1 font-mono" />
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Hidden link / URL</label>
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… (never shown to users)" className="mt-1 font-mono" />
           </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Description (optional)</label>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short tagline shown under name" className="mt-1" />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Description</label>
+              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short tagline" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Icon name</label>
+              <Input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="Rocket / Globe" className="mt-1" />
+            </div>
           </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Icon name (optional)</label>
-            <Input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="Rocket / MessageCircle / Globe" className="mt-1" />
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Price (coins)</label>
+              <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Continuation</label>
+              <Input type="number" value={contPrice} onChange={(e) => setContPrice(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Free trial (sec)</label>
+              <Input type="number" value={freeSecs} onChange={(e) => setFreeSecs(e.target.value)} className="mt-1" />
+            </div>
           </div>
           <div className="flex gap-2">
             <Button disabled={saving} onClick={submit}>
@@ -1017,7 +1056,10 @@ const ServicesPanel = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Link</TableHead>
+              <TableHead>Slug</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Cont.</TableHead>
+              <TableHead>Trial</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -1026,7 +1068,10 @@ const ServicesPanel = () => {
             {items.map((s) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.name}</TableCell>
-                <TableCell className="max-w-[180px] truncate font-mono text-[11px] text-muted-foreground">{s.url}</TableCell>
+                <TableCell className="font-mono text-[11px]">{s.slug}</TableCell>
+                <TableCell>{s.price_coins}</TableCell>
+                <TableCell>{s.continuation_price_coins}</TableCell>
+                <TableCell>{s.free_trial_seconds}s</TableCell>
                 <TableCell>
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${s.enabled ? "bg-win/20 text-win" : "bg-muted text-muted-foreground"}`}>
                     {s.enabled ? "live" : "hidden"}
