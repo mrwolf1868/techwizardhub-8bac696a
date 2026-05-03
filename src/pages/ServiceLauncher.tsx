@@ -20,7 +20,7 @@ type Child = {
 const ServiceLauncher = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { coins, refreshFromServer } = useUserStore();
+  const { coins, syncFromSupabase } = useUserStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [iframeUrl, setIframeUrl] = useState<string | null>(null);
