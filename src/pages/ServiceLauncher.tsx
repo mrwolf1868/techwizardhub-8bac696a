@@ -104,7 +104,7 @@ const ServiceLauncher = () => {
     toast.success("Payment successful — enjoy!");
     setPaid(true);
     setPaywall(false);
-    await refreshFromServer?.();
+    await syncFromSupabase();
   };
 
   return (
