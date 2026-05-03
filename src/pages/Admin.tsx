@@ -264,8 +264,6 @@ const Admin = () => {
           {section === "activity" && <ActivityPanel logs={activity} profiles={profiles} />}
           {section === "payments" && <PaymentsPanel mpesa={mpesa} />}
           {section === "services" && <ServicesPanel />}
-          {section === "pricing" && <PricingPanel />}
-          {section === "child" && <ChildProjectsPanel />}
           {section === "settings" && <SettingsPanel settings={settings} onSaved={load} />}
         </div>
       </main>
