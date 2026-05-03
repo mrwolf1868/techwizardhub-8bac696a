@@ -1038,6 +1038,29 @@ const ServicesPanel = () => {
               <Input type="number" value={freeSecs} onChange={(e) => setFreeSecs(e.target.value)} className="mt-1" />
             </div>
           </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Continuation duration (how long the paid unlock lasts)
+            </label>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <Input
+                type="number"
+                min={1}
+                value={contDurValue}
+                onChange={(e) => setContDurValue(e.target.value)}
+                placeholder="e.g. 7"
+              />
+              <select
+                value={contDurUnit}
+                onChange={(e) => setContDurUnit(e.target.value)}
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="days">Days</option>
+                <option value="weeks">Weeks</option>
+                <option value="months">Months</option>
+              </select>
+            </div>
+          </div>
           <div className="flex gap-2">
             <Button disabled={saving} onClick={submit}>
               {editing ? "Save changes" : <><Plus className="mr-1 h-4 w-4" /> Add service</>}
