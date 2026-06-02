@@ -23,7 +23,11 @@ import {
   Plus,
   Pencil,
   X,
+  Send,
+  Megaphone,
+  User as UserIcon,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,6 +97,7 @@ type Section =
   | "dashboard"
   | "sessions"
   | "users"
+  | "messages"
   | "pairing"
   | "activity"
   | "payments"
@@ -161,6 +166,7 @@ const Admin = () => {
     { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { key: "sessions", label: "Sessions", icon: Radio },
     { key: "users", label: "Users", icon: UsersIcon },
+    { key: "messages", label: "Messages", icon: Send },
     { key: "pairing", label: "Pairing logs", icon: KeyRound },
     { key: "activity", label: "Activity", icon: ActivityIcon },
     { key: "payments", label: "Payments", icon: CheckCircle2 },
@@ -260,6 +266,7 @@ const Admin = () => {
           {section === "users" && (
             <UsersPanel profiles={profiles} onChange={load} />
           )}
+          {section === "messages" && <MessagesPanel profiles={profiles} />}
           {section === "pairing" && <PairingPanel logs={pairing} />}
           {section === "activity" && <ActivityPanel logs={activity} profiles={profiles} />}
           {section === "payments" && <PaymentsPanel mpesa={mpesa} />}
