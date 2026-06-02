@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Rocket, LogOut, ShieldCheck } from "lucide-react";
 import { CoinBalance } from "./CoinBalance";
+import { MessagesInbox } from "./MessagesInbox";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export const AppHeader = () => {
         </div>
         <div className="flex items-center gap-2">
           <CoinBalance />
+          <MessagesInbox />
           {isAdmin && (
             <Button asChild variant="ghost" size="icon" aria-label="Admin panel">
               <Link to="/admin">
