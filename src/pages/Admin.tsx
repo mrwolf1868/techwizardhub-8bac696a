@@ -1427,4 +1427,206 @@ const formatDuration = (ms: number) => {
   return `${Math.floor(h / 24)}d`;
 };
 
+/* ---------- Messages ---------- */
+type AdminMessage = {
+  id: string;
+  sender_label: string;
+  title: string | null;
+  body: string;
+  recipient_id: string | null;
+  created_at: string;
+};
+
+const MessagesPanel = ({ profiles }: { profiles: Profile[] }) => {
+  const { userId } = useUserStore();
+  const [mode, setMode] = useState<"broadcast" | "individual">("broadcast");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [search, setSearch] = useState("");
+  const [sending, setSending] = useState(false);
+  const [messages, setMessages] = useState<AdminMessage[]>([]);
+
+  const loadMessages = async () => {
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    setMessages((data || []) as AdminMessage[]);
+  };
+
+  useEffect(() => {
+    loadMessages();
+  }, []);
+
+  const filteredUsers = profiles.filter(
+    (p) =>
+      !search ||
+      p.phone.includes(search) ||
+      (p.email || "").toLowerCase().includes(search.toLowerCase()) ||
+      p.referral_code.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const phoneFor = (uid: string | null) =>
+    uid ? profiles.find((p) => p.user_id === uid)?.phone || "Unknown user" : null;
+
+  const send = async () => {
+    if (!body.trim()) return toast.error("Message body is required");
+    if (mode === "individual" && !recipient) return toast.error("Select a recipient");
+    setSending(true);
+    const { error } = await supabase.from("messages").insert({
+      sender_label: "TECHWIZARD HUB",
+      title: title.trim() || null,
+      body: body.trim(),
+      recipient_id: mode === "broadcast" ? null : recipient,
+      created_by: userId,
+    });
+    setSending(false);
+    if (error) return toast.error(error.message);
+    toast.success(mode === "broadcast" ? "Broadcast sent to all users" : "Message sent");
+    setTitle("");
+    setBody("");
+    setRecipient("");
+    setSearch("");
+    loadMessages();
+  };
+
+  const remove = async (id: string) => {
+    const { error } = await supabase.from("messages").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Message deleted");
+    loadMessages();
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card className="bg-gradient-card p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-primary shadow-glow">
+            <Send className="h-4 w-4 text-primary-foreground" />
+          </div>
+          <div>
+            <h2 className="font-display text-sm font-black">Compose message</h2>
+            <p className="text-[10px] text-muted-foreground">Sent as TECHWIZARD HUB</p>
+          </div>
+        </div>
+
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("broadcast")}
+            className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
+              mode === "broadcast"
+                ? "border-primary bg-primary/15 text-primary"
+                : "border-border/60 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Megaphone className="h-4 w-4" /> All users
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("individual")}
+            className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
+              mode === "individual"
+                ? "border-primary bg-primary/15 text-primary"
+                : "border-border/60 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <UserIcon className="h-4 w-4" /> Individual
+          </button>
+        </div>
+
+        {mode === "individual" && (
+          <div className="mb-3">
+            <div className="relative mb-2">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search user phone / email / ref"
+                className="pl-9"
+              />
+            </div>
+            <div className="max-h-40 overflow-auto rounded-lg border border-border/60">
+              {filteredUsers.length === 0 && (
+                <div className="p-3 text-center text-xs text-muted-foreground">No users found</div>
+              )}
+              {filteredUsers.slice(0, 50).map((p) => (
+                <button
+                  key={p.user_id}
+                  type="button"
+                  onClick={() => setRecipient(p.user_id)}
+                  className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs transition-colors ${
+                    recipient === p.user_id ? "bg-primary/15 text-primary" : "hover:bg-muted/50"
+                  }`}
+                >
+                  <span className="font-mono">{p.phone}</span>
+                  <span className="text-muted-foreground">{p.email || p.referral_code}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Title (optional)"
+          className="mb-2"
+        />
+        <Textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Write your message..."
+          rows={5}
+          className="mb-3"
+        />
+        <Button onClick={send} disabled={sending} className="w-full">
+          <Send className="mr-2 h-4 w-4" />
+          {sending ? "Sending..." : mode === "broadcast" ? "Send to all users" : "Send message"}
+        </Button>
+      </Card>
+
+      <Card className="bg-gradient-card p-4">
+        <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
+          Sent messages
+        </h2>
+        <div className="max-h-[600px] space-y-2 overflow-auto">
+          {messages.length === 0 && (
+            <div className="py-8 text-center text-xs text-muted-foreground">No messages yet</div>
+          )}
+          {messages.map((m) => (
+            <div key={m.id} className="rounded-lg border border-border/60 bg-background/40 p-3">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    m.recipient_id
+                      ? "bg-coin/20 text-coin"
+                      : "bg-primary/15 text-primary"
+                  }`}
+                >
+                  {m.recipient_id ? phoneFor(m.recipient_id) : "Broadcast — all users"}
+                </span>
+                <button
+                  onClick={() => remove(m.id)}
+                  className="text-muted-foreground hover:text-destructive"
+                  aria-label="Delete message"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {m.title && <div className="text-sm font-bold">{m.title}</div>}
+              <div className="whitespace-pre-wrap text-xs text-muted-foreground">{m.body}</div>
+              <div className="mt-1 text-[10px] text-muted-foreground/70">
+                {new Date(m.created_at).toLocaleString()}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+};
+
 export default Admin;
