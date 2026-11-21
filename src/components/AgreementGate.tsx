@@ -48,7 +48,7 @@ export const AgreementGate = () => {
               <strong className="text-foreground">Purchased coins usage.</strong> Purchased coins can only be used for bot deployment.
             </li>
             <li>
-              <strong className="text-foreground">Game risk.</strong> Coins staked in games (Avicoins, Lucky Spin) may be lost. Play responsibly.
+              <strong className="text-foreground">Game risk.</strong> Coins staked in games (Chess, Draughts) are lost to the winner, minus a 5% platform fee. Play responsibly.
             </li>
             <li>
               <strong className="text-foreground">Fair use.</strong> Cheating, abuse of the referral system, or fraudulent payments will result in account suspension.

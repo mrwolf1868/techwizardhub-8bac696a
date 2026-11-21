@@ -7,10 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useUserStore } from "@/store/userStore";
 import Index from "./pages/Index.tsx";
 import Games from "./pages/Games.tsx";
-import Avicoins from "./pages/Avicoins.tsx";
-import Rocketcoins from "./pages/Rocketcoins.tsx";
-import Dive from "./pages/Dive.tsx";
-import LuckySpin from "./pages/LuckySpin.tsx";
+import GameMatch from "./pages/GameMatch.tsx";
 import Deploy from "./pages/Deploy.tsx";
 import Services from "./pages/Services.tsx";
 import ServiceLauncher from "./pages/ServiceLauncher.tsx";
@@ -63,10 +60,7 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/" element={<Index />} />
           <Route path="/games" element={<Games />} />
-          <Route path="/games/avicoins" element={<Avicoins />} />
-          <Route path="/games/rocketcoins" element={<Rocketcoins />} />
-          <Route path="/games/dive" element={<Dive />} />
-          <Route path="/games/spin" element={<LuckySpin />} />
+          <Route path="/games/match/:id" element={<GameMatch />} />
           <Route path="/deploy" element={<Deploy />} />
           <Route path="/services" element={<Services />} />
           <Route path="/s/:slug" element={<ServiceLauncher />} />
