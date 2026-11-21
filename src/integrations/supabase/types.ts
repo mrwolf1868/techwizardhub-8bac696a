@@ -152,6 +152,51 @@ export type Database = {
         }
         Relationships: []
       }
+      game_matches: {
+        Row: {
+          created_at: string
+          creator_id: string
+          game_type: string
+          house_fee: number
+          id: string
+          opponent_id: string | null
+          stake: number
+          state: string | null
+          status: string
+          turn: string | null
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          game_type: string
+          house_fee?: number
+          id?: string
+          opponent_id?: string | null
+          stake: number
+          state?: string | null
+          status?: string
+          turn?: string | null
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          game_type?: string
+          house_fee?: number
+          id?: string
+          opponent_id?: string | null
+          stake?: number
+          state?: string | null
+          status?: string
+          turn?: string | null
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
       message_reads: {
         Row: {
           id: string
@@ -549,6 +594,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      game_create_match: {
+        Args: { _game: string; _stake: number; _state: string }
+        Returns: string
+      }
+      game_join_match: { Args: { _id: string }; Returns: undefined }
+      game_move: {
+        Args: { _id: string; _result: string; _state: string }
+        Returns: undefined
+      }
+      game_resign: { Args: { _id: string }; Returns: undefined }
+      game_settle: {
+        Args: { _id: string; _winner: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
