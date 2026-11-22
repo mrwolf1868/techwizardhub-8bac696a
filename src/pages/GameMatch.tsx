@@ -69,7 +69,7 @@ const GameMatch = () => {
   };
 
   const resign = async () => {
-    if (!confirm(m?.status === "waiting" ? "Cancel and refund your stake?" : "Resign? Your opponent wins the pot.")) return;
+    if (!confirm(m?.status === "waiting" ? "Cancel and refund your stake? The entry fee is not refunded." : "Quit? Your opponent wins the pot.")) return;
     const { error } = await supabase.rpc("game_resign", { _id: m!.id });
     if (error) toast.error(error.message); else syncFromSupabase();
   };
@@ -85,36 +85,37 @@ const GameMatch = () => {
 
   const status = m.status === "waiting" ? "Waiting for an opponent to join…"
     : m.status === "cancelled" ? "Match cancelled — stake refunded."
-    : m.status === "finished" ? (m.winner_id ? (m.winner_id === me ? `You won ${m.stake * 2 - m.house_fee} coins! 🎉` : "You lost this match.") : "Draw — stakes refunded.")
+    : m.status === "finished" ? (m.winner_id ? (m.winner_id === me ? `You won KSh ${m.stake * 2}! 🎉` : "You lost this match.") : "Draw — stakes refunded.")
     : myTurn ? "Your move" : "Opponent's move…";
 
   return (
     <AppLayout>
-      <Link to="/games" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> Back to games
+      <section className="page-section">
+      <Link to={`/games/${m.game_type}`} className="back-button inline-flex items-center gap-2 text-sm">
+        <ArrowLeft className="h-4 w-4" /> Back to {m.game_type === "chess" ? "Chess" : "Draft"}
       </Link>
-      <Card className="p-4">
+      <Card className="mx-auto max-w-xl p-4">
         <div className="flex items-center justify-between">
-          <div className="font-display text-lg font-black capitalize">{m.game_type}</div>
-          <div className="text-xs text-muted-foreground">Pot {m.stake * 2} coins</div>
+          <div className="font-display text-lg font-black">{m.game_type === "chess" ? "Chess" : "Draft"}</div>
+          <div className="text-xs text-muted-foreground">Pot KSh {m.stake * 2}</div>
         </div>
         <div className="mt-1 text-sm font-semibold text-primary">{status}</div>
         {chess?.inCheck() && m.status === "active" && <div className="text-xs text-lose">Check!</div>}
 
-        <div className="mt-3 grid aspect-square w-full grid-cols-8 overflow-hidden rounded-lg border border-border">
+        <div className="play-board mt-3">
           {cells.map((i) => {
             const dark = (Math.floor(i / 8) + (i % 8)) % 2 === 1;
             let piece: React.ReactNode = null;
             if (chess) {
               const p = chess.get(sqName(i));
-              if (p) piece = <span className={`text-3xl leading-none ${p.color === "w" ? "text-foreground drop-shadow" : "text-background [text-shadow:0_0_2px_hsl(var(--foreground))]"}`}>{GLYPH[p.type]}</span>;
+              if (p) piece = <span className={`text-3xl leading-none ${p.color === "w" ? "text-[hsl(var(--piece-light))] [text-shadow:0_0_2px_hsl(var(--piece-outline))]" : "text-[hsl(var(--piece-dark))]"}`}>{GLYPH[p.type]}</span>;
             } else if (m.state && m.state[i] !== ".") {
               const p = m.state[i];
               piece = <span className={`grid h-4/5 w-4/5 place-items-center rounded-full border-2 text-xs font-black ${p.toLowerCase() === "w" ? "border-foreground/40 bg-foreground text-background" : "border-accent bg-accent text-accent-foreground"}`}>{p === p.toUpperCase() ? "♛" : ""}</span>;
             }
             return (
               <button key={i} onClick={() => click(i)}
-                className={`grid place-items-center ${dark ? "bg-primary/40" : "bg-muted"} ${sel === i ? "ring-2 ring-inset ring-coin" : ""} ${targets.has(i) ? "ring-2 ring-inset ring-win" : ""}`}>
+                className={`board-square grid place-items-center ${dark ? "square-dark" : "square-light"} ${sel === i ? "square-selected" : ""} ${targets.has(i) ? "square-target" : ""}`}>
                 {piece}
               </button>
             );
@@ -122,9 +123,10 @@ const GameMatch = () => {
         </div>
         <p className="mt-2 text-xs text-muted-foreground">You play {side === "w" ? (chess ? "White" : "Light") : (chess ? "Black" : "Dark")}. Tap a piece, then a highlighted square.</p>
         {(m.status === "waiting" || m.status === "active") && (me === m.creator_id || me === m.opponent_id) && (
-          <Button variant="destructive" className="mt-3 w-full" onClick={resign}>{m.status === "waiting" ? "Cancel match" : "Resign"}</Button>
+          <Button variant="destructive" className="mt-3 w-full" onClick={resign}>{m.status === "waiting" ? "Cancel match" : "Quit match"}</Button>
         )}
       </Card>
+      </section>
     </AppLayout>
   );
 };

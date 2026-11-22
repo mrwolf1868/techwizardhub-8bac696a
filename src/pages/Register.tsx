@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserStore } from "@/store/userStore";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Rocket, Phone, Lock, Mail, Gift } from "lucide-react";
+import { Rocket, Phone, Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -22,16 +22,8 @@ const Register = () => {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [ref, setRef] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const r = params.get("ref");
-    if (r) setRef(r.toUpperCase());
-    const pending = localStorage.getItem("twh-pending-ref");
-    if (pending && !r) setRef(pending);
-  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +46,6 @@ const Register = () => {
         data: {
           phone: normalized,
           real_email: email.trim().toLowerCase(),
-          referred_by: ref.trim().toUpperCase() || null,
         },
       },
     });
@@ -66,8 +57,7 @@ const Register = () => {
       await migrateLocalToAccount(data.user.id);
       await syncFromSupabase();
     }
-    localStorage.removeItem("twh-pending-ref");
-    toast.success("🎉 Account created! 70 welcome coins added");
+    toast.success("Account created! Your welcome bonus has been added");
     navigate("/");
   };
 
@@ -129,21 +119,6 @@ const Register = () => {
                 placeholder="At least 6 characters"
                 className="pl-9"
                 required
-              />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
-              Referral code (optional)
-            </Label>
-            <div className="relative mt-1">
-              <Gift className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-coin" />
-              <Input
-                value={ref}
-                onChange={(e) => setRef(e.target.value.toUpperCase())}
-                placeholder="TWXXXXXX"
-                className="pl-9 font-mono uppercase"
-                maxLength={20}
               />
             </div>
           </div>

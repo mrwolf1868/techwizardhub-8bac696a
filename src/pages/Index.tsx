@@ -1,96 +1,55 @@
-import { Link } from "react-router-dom";
-import { AppLayout } from "@/components/AppLayout";
-import { CoinBalance } from "@/components/CoinBalance";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { AppLayout, formatKsh } from "@/components/AppLayout";
+import { GameGrid, ServiceGrid, useServices } from "@/components/CatalogCards";
 import { useUserStore } from "@/store/userStore";
-import { Card } from "@/components/ui/card";
-import { Gamepad2, Rocket, Wallet, User, Bot, TrendingUp } from "lucide-react";
+import draftHero from "@/assets/draft-promotion.jpg.asset.json";
+import chessHero from "@/assets/chess-promotion.jpg.asset.json";
+import draftImage from "@/assets/draft-game.jpg.asset.json";
 
-const StatCard = ({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Bot;
-  label: string;
-  value: number | string;
-}) => (
-  <Card className="border-border/60 bg-gradient-card p-4 shadow-card">
-    <div className="flex items-center gap-2 text-muted-foreground">
-      <Icon className="h-4 w-4" />
-      <span className="text-xs font-medium uppercase tracking-wider">{label}</span>
-    </div>
-    <div className="mt-2 font-display text-3xl font-black">{value}</div>
-  </Card>
-);
+const slides = [draftHero, chessHero, draftImage];
+const slideAlt = ["Draft promotion", "Chess promotion", "Draft board"];
 
-const ActionTile = ({
-  to,
-  title,
-  subtitle,
-  icon: Icon,
-  variant = "primary",
-}: {
-  to: string;
-  title: string;
-  subtitle: string;
-  icon: typeof Bot;
-  variant?: "primary" | "magenta" | "coin" | "muted";
-}) => {
-  const styles = {
-    primary: "bg-gradient-primary text-primary-foreground shadow-glow",
-    magenta: "bg-gradient-magenta text-accent-foreground shadow-magenta",
-    coin: "bg-gradient-coin text-coin-foreground shadow-coin",
-    muted: "bg-secondary text-foreground border border-border",
-  }[variant];
-  return (
-    <Link to={to} className="group">
-      <Card className="overflow-hidden border-border/60 bg-gradient-card p-4 shadow-card transition-all hover:-translate-y-1 hover:border-primary/40">
-        <div className={`mb-3 grid h-12 w-12 place-items-center rounded-xl ${styles} transition-transform group-hover:scale-110`}>
-          <Icon className="h-6 w-6" strokeWidth={2.5} />
-        </div>
-        <div className="font-display text-base font-bold">{title}</div>
-        <div className="mt-0.5 text-xs text-muted-foreground">{subtitle}</div>
-      </Card>
-    </Link>
-  );
-};
+const Index = () => {
+  const coins = useUserStore((s) => s.coins);
+  const { items, loading } = useServices();
+  const [slide, setSlide] = useState(0);
 
-const Dashboard = () => {
-  const { botsDeployed, gamesPlayed } = useUserStore();
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => setSlide((i) => (i + 1) % slides.length), 5000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <AppLayout>
-      {/* Hero balance card */}
-      <Card className="relative overflow-hidden border-primary/30 bg-gradient-card p-6 shadow-glow">
-        <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-accent/10 blur-3xl" />
-        <div className="relative">
-          <CoinBalance size="lg" />
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-background/40 px-3 py-1 text-xs text-muted-foreground">
-            <Rocket className="h-3 w-3 text-primary" />
-            70 coins = 1 bot deployment
-          </div>
+      <section className="promotion" aria-label="TECHWIZARD Hub promotions">
+        {slides.map((asset, i) => (
+          <img key={asset.asset_id} src={asset.url} alt={slideAlt[i]} className={slide === i ? "promotion-slide is-active" : "promotion-slide"} />
+        ))}
+        <div className="slide-dots">
+          {slides.map((_, i) => (
+            <Button key={i} variant="ghost" size="icon" aria-label={`Show promotion ${i + 1}`} aria-pressed={slide === i}
+              onClick={() => setSlide(i)} className={slide === i ? "dot active" : "dot"}><span /></Button>
+          ))}
         </div>
-      </Card>
-
-      {/* Stats */}
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <StatCard icon={Bot} label="Bots deployed" value={botsDeployed} />
-        <StatCard icon={TrendingUp} label="Games played" value={gamesPlayed} />
-      </div>
-
-      {/* Action tiles */}
-      <h2 className="mt-6 font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
-        Quick actions
-      </h2>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <ActionTile to="/games" title="Play games" subtitle="Stake & win big" icon={Gamepad2} variant="magenta" />
-        <ActionTile to="/deploy" title="Deploy bot" subtitle="70 coins" icon={Rocket} variant="primary" />
-        <ActionTile to="/buy" title="Buy coins" subtitle="1 KES = 1 coin" icon={Wallet} variant="coin" />
-        <ActionTile to="/profile" title="Profile" subtitle="Refer & earn 30" icon={User} variant="muted" />
-      </div>
+      </section>
+      <section className="stats-band">
+        <div><small>Wallet</small><strong>{formatKsh(coins)}</strong><span>Available balance</span></div>
+        <div><small>Match modes</small><strong>02</strong><span>Create · Join</span></div>
+        <div><small>Games</small><strong>02</strong><span>Draft + Chess</span></div>
+        <div><small>Services</small><strong>{loading ? "--" : String(items.length).padStart(2, "0")}</strong><span>Explore services</span></div>
+      </section>
+      <section className="content-section">
+        <div className="section-heading"><div><span className="eyebrow">GAME ZONE</span><h2>Choose your game</h2></div><small>Skill • Competition • Rewards</small></div>
+        <GameGrid />
+      </section>
+      <section className="content-section">
+        <div className="section-heading"><div><h2>Services</h2></div><small>Simple • Fast • Secure</small></div>
+        <ServiceGrid items={items} loading={loading} />
+      </section>
     </AppLayout>
   );
 };
 
-export default Dashboard;
+export default Index;

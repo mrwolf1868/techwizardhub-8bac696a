@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import {
   LayoutDashboard,
   Users as UsersIcon,
-  Radio,
-  KeyRound,
+  Swords,
+  Wallet,
+  TrendingUp,
   Activity as ActivityIcon,
   Settings as SettingsIcon,
   ShieldCheck,
@@ -47,33 +48,13 @@ type Profile = {
   email: string | null;
   coins: number;
   games_played: number;
-  bots_deployed: number;
-  referral_code: string;
   banned: boolean;
   banned_at: string | null;
   last_active: string;
   created_at: string;
 };
 
-type Bot = {
-  id: string;
-  user_id: string;
-  phone_number: string;
-  code: string;
-  status: string;
-  last_active: string;
-  disconnected_at: string | null;
-  deployed_at: string;
-};
 
-type PairingLog = {
-  id: string;
-  user_id: string | null;
-  phone_number: string;
-  status: string;
-  detail: string | null;
-  created_at: string;
-};
 
 type ActivityLog = {
   id: string;
@@ -83,6 +64,21 @@ type ActivityLog = {
   detail: string | null;
   created_at: string;
 };
+
+type Match = {
+  id: string;
+  game_type: string;
+  stake: number;
+  status: string;
+  creator_id: string;
+  opponent_id: string | null;
+  winner_id: string | null;
+  house_fee: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type FeeTx = { amount: number; created_at: string };
 
 type MpesaTx = {
   id: string;
@@ -95,10 +91,9 @@ type MpesaTx = {
 
 type Section =
   | "dashboard"
-  | "sessions"
   | "users"
+  | "matches"
   | "messages"
-  | "pairing"
   | "activity"
   | "payments"
   | "services"
@@ -110,24 +105,24 @@ const Admin = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [bots, setBots] = useState<Bot[]>([]);
-  const [pairing, setPairing] = useState<PairingLog[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [fees, setFees] = useState<FeeTx[]>([]);
   const [activity, setActivity] = useState<ActivityLog[]>([]);
   const [mpesa, setMpesa] = useState<MpesaTx[]>([]);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
 
   const load = async () => {
-    const [{ data: p }, { data: b }, { data: pl }, { data: al }, { data: m }, { data: s }] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(500),
-      supabase.from("bots").select("*").order("deployed_at", { ascending: false }).limit(500),
-      supabase.from("pairing_logs").select("*").order("created_at", { ascending: false }).limit(200),
+    const [{ data: p }, { data: gm }, { data: fx }, { data: al }, { data: m }, { data: s }] = await Promise.all([
+      supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(1000),
+      supabase.from("game_matches").select("id, game_type, stake, status, creator_id, opponent_id, winner_id, house_fee, created_at, updated_at").order("created_at", { ascending: false }).limit(500),
+      supabase.from("transactions").select("amount, created_at").eq("type", "house_fee").order("created_at", { ascending: false }).limit(5000),
       supabase.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("mpesa_transactions").select("id, phone, amount, status, mpesa_receipt, created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("admin_settings").select("key, value"),
     ]);
     setProfiles((p || []) as Profile[]);
-    setBots((b || []) as Bot[]);
-    setPairing((pl || []) as PairingLog[]);
+    setMatches((gm || []) as Match[]);
+    setFees((fx || []) as FeeTx[]);
     setActivity((al || []) as ActivityLog[]);
     setMpesa((m || []) as MpesaTx[]);
     const sObj: Record<string, unknown> = {};
@@ -141,9 +136,8 @@ const Admin = () => {
 
     const channel = supabase
       .channel("admin-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "bots" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "game_matches" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "pairing_logs" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "activity_logs" }, () => load())
       .subscribe();
 
@@ -153,9 +147,6 @@ const Admin = () => {
   if (!userId) return <Navigate to="/login" replace />;
   if (!isAdmin) return <Navigate to="/" replace />;
 
-  const totalUsers = profiles.length;
-  const activeSessions = bots.filter((b) => b.status === "connected").length;
-  const disconnectedSessions = bots.filter((b) => b.status !== "connected").length;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -164,10 +155,9 @@ const Admin = () => {
 
   const navItems: Array<{ key: Section; label: string; icon: React.ElementType }> = [
     { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { key: "sessions", label: "Sessions", icon: Radio },
     { key: "users", label: "Users", icon: UsersIcon },
+    { key: "matches", label: "Matches", icon: Swords },
     { key: "messages", label: "Messages", icon: Send },
-    { key: "pairing", label: "Pairing logs", icon: KeyRound },
     { key: "activity", label: "Activity", icon: ActivityIcon },
     { key: "payments", label: "Payments", icon: CheckCircle2 },
     { key: "services", label: "Services", icon: Rocket },
@@ -188,7 +178,7 @@ const Admin = () => {
           </div>
           <div>
             <div className="font-display text-sm font-black">Admin</div>
-            <div className="text-[10px] text-muted-foreground">TechwizardHub</div>
+            <div className="text-[10px] text-muted-foreground">TECHWIZARD Hub</div>
           </div>
         </div>
         <nav className="flex flex-col gap-1 p-2">
@@ -253,21 +243,13 @@ const Admin = () => {
 
         <div className="p-4">
           {section === "dashboard" && (
-            <Dashboard
-              totalUsers={totalUsers}
-              activeSessions={activeSessions}
-              disconnectedSessions={disconnectedSessions}
-              activity={activity}
-            />
+            <Dashboard profiles={profiles} matches={matches} fees={fees} mpesa={mpesa} activity={activity} />
           )}
-          {section === "sessions" && (
-            <SessionsPanel bots={bots} profiles={profiles} onChange={load} />
-          )}
+          {section === "matches" && <MatchesPanel matches={matches} profiles={profiles} onChange={load} />}
           {section === "users" && (
             <UsersPanel profiles={profiles} onChange={load} />
           )}
           {section === "messages" && <MessagesPanel profiles={profiles} />}
-          {section === "pairing" && <PairingPanel logs={pairing} />}
           {section === "activity" && <ActivityPanel logs={activity} profiles={profiles} />}
           {section === "payments" && <PaymentsPanel mpesa={mpesa} />}
           {section === "services" && <ServicesPanel />}
@@ -279,42 +261,146 @@ const Admin = () => {
 };
 
 /* ---------- Dashboard ---------- */
+const DAY = 86400000;
+const ksh = (n: number) => `KSh ${n.toLocaleString()}`;
+
 const Dashboard = ({
-  totalUsers, activeSessions, disconnectedSessions, activity,
+  profiles, matches, fees, mpesa, activity,
 }: {
-  totalUsers: number; activeSessions: number; disconnectedSessions: number; activity: ActivityLog[];
-}) => (
-  <>
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <StatCard label="Total users" value={totalUsers} icon={UsersIcon} tone="primary" />
-      <StatCard label="Active sessions" value={activeSessions} icon={Radio} tone="win" />
-      <StatCard label="Disconnected" value={disconnectedSessions} icon={Power} tone="lose" />
-      <StatCard label="Events (24h)" value={activity.filter((a) => Date.now() - new Date(a.created_at).getTime() < 86400000).length} icon={ActivityIcon} tone="coin" />
-    </div>
-    <Card className="mt-4 bg-gradient-card p-4">
-      <h2 className="mb-2 font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
-        Live activity
-      </h2>
-      <div className="max-h-[400px] overflow-auto">
+  profiles: Profile[]; matches: Match[]; fees: FeeTx[]; mpesa: MpesaTx[]; activity: ActivityLog[];
+}) => {
+  const now = Date.now();
+  const sum = (xs: { amount: number }[]) => xs.reduce((t, x) => t + (x.amount || 0), 0);
+  const feesToday = sum(fees.filter((f) => now - new Date(f.created_at).getTime() < DAY));
+  const fees7 = sum(fees.filter((f) => now - new Date(f.created_at).getTime() < 7 * DAY));
+  const paid = mpesa.filter((m) => m.status === "success" || m.status === "completed");
+  const depositsToday = sum(paid.filter((m) => now - new Date(m.created_at).getTime() < DAY));
+  const liveMatches = matches.filter((m) => m.status === "active").length;
+  const waitingMatches = matches.filter((m) => m.status === "waiting").length;
+  const staked = matches.filter((m) => m.status === "active").reduce((t, m) => t + m.stake * 2, 0)
+    + matches.filter((m) => m.status === "waiting").reduce((t, m) => t + m.stake, 0);
+  const newUsers = profiles.filter((p) => now - new Date(p.created_at).getTime() < DAY).length;
+  const activeUsers = profiles.filter((p) => now - new Date(p.last_active).getTime() < DAY).length;
+  const banned = profiles.filter((p) => p.banned).length;
+  const balances = profiles.reduce((t, p) => t + p.coins, 0);
+  const top = [...profiles].sort((a, b) => b.coins - a.coins).slice(0, 5);
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard label="Total users" value={profiles.length} icon={UsersIcon} tone="primary" />
+        <StatCard label="Active (24h)" value={activeUsers} icon={ActivityIcon} tone="win" />
+        <StatCard label="New today" value={newUsers} icon={Plus} tone="coin" />
+        <StatCard label="Banned" value={banned} icon={Ban} tone="lose" />
+        <StatCard label="Fees today" value={ksh(feesToday)} icon={TrendingUp} tone="win" />
+        <StatCard label="Fees (7 days)" value={ksh(fees7)} icon={TrendingUp} tone="primary" />
+        <StatCard label="Deposits today" value={ksh(depositsToday)} icon={CheckCircle2} tone="coin" />
+        <StatCard label="User balances" value={ksh(balances)} icon={Wallet} tone="primary" />
+        <StatCard label="Live matches" value={liveMatches} icon={Swords} tone="win" />
+        <StatCard label="Waiting matches" value={waitingMatches} icon={Swords} tone="coin" />
+        <StatCard label="Coins in play" value={ksh(staked)} icon={Wallet} tone="primary" />
+        <StatCard label="Events (24h)" value={activity.filter((a) => now - new Date(a.created_at).getTime() < DAY).length} icon={ActivityIcon} tone="coin" />
+      </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <Card className="bg-gradient-card p-4">
+          <h2 className="mb-2 font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">Top balances</h2>
+          <Table>
+            <TableHeader><TableRow><TableHead>Phone</TableHead><TableHead>Balance</TableHead><TableHead>Games</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {top.map((p) => (
+                <TableRow key={p.user_id}>
+                  <TableCell className="font-mono text-xs">{p.phone}</TableCell>
+                  <TableCell className="text-xs">{ksh(p.coins)}</TableCell>
+                  <TableCell className="text-xs">{p.games_played}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+        <Card className="bg-gradient-card p-4">
+          <h2 className="mb-2 font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">Live activity</h2>
+          <div className="max-h-[360px] overflow-auto">
+            <Table>
+              <TableHeader><TableRow><TableHead>Event</TableHead><TableHead>Detail</TableHead><TableHead>When</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {activity.slice(0, 30).map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell><span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">{a.event}</span></TableCell>
+                    <TableCell className="text-xs">{a.detail || "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      </div>
+    </>
+  );
+};
+
+/* ---------- Matches ---------- */
+const MatchesPanel = ({ matches, profiles, onChange }: { matches: Match[]; profiles: Profile[]; onChange: () => void }) => {
+  const [filter, setFilter] = useState<"all" | "waiting" | "active" | "finished" | "cancelled">("all");
+  const [game, setGame] = useState<"all" | "chess" | "draughts">("all");
+  const [busy, setBusy] = useState<string | null>(null);
+  const phone = (id: string | null) => (id ? profiles.find((p) => p.user_id === id)?.phone || id.slice(0, 8) : "—");
+  const rows = matches.filter((m) => (filter === "all" || m.status === filter) && (game === "all" || m.game_type === game));
+
+  const cancel = async (m: Match) => {
+    if (!confirm(`Cancel this ${m.game_type} match and refund each player's stake of KSh ${m.stake}?`)) return;
+    setBusy(m.id);
+    const { error } = await supabase.rpc("admin_cancel_match", { _id: m.id });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success("Match cancelled and stakes refunded");
+    onChange();
+  };
+
+  const exportCsv = () => {
+    const header = "game,status,stake,fees,creator,opponent,winner,created_at\n";
+    const body = rows.map((m) => [m.game_type, m.status, m.stake, m.house_fee, phone(m.creator_id), phone(m.opponent_id), phone(m.winner_id), m.created_at].join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([header + body], { type: "text/csv" }));
+    const a = document.createElement("a"); a.href = url; a.download = `matches-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Card className="bg-gradient-card p-4">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {(["all", "waiting", "active", "finished", "cancelled"] as const).map((f) => (
+          <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)} className="capitalize">{f}</Button>
+        ))}
+        <span className="mx-1 h-5 w-px bg-border" />
+        {(["all", "chess", "draughts"] as const).map((g) => (
+          <Button key={g} size="sm" variant={game === g ? "secondary" : "ghost"} onClick={() => setGame(g)} className="capitalize">{g === "draughts" ? "Draft" : g}</Button>
+        ))}
+        <Button size="sm" variant="ghost" className="ml-auto" onClick={exportCsv}><Download className="mr-1 h-4 w-4" />Export</Button>
+      </div>
+      <div className="overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Event</TableHead>
-              <TableHead>Detail</TableHead>
-              <TableHead>When</TableHead>
+              <TableHead>Game</TableHead><TableHead>Status</TableHead><TableHead>Stake</TableHead><TableHead>Fees</TableHead>
+              <TableHead>Players</TableHead><TableHead>Winner</TableHead><TableHead>Created</TableHead><TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {activity.slice(0, 30).map((a) => (
-              <TableRow key={a.id}>
+            {rows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground">No matches</TableCell></TableRow>}
+            {rows.map((m) => (
+              <TableRow key={m.id}>
+                <TableCell className="text-xs font-bold">{m.game_type === "draughts" ? "Draft" : "Chess"}</TableCell>
+                <TableCell className="text-xs capitalize">{m.status}</TableCell>
+                <TableCell className="text-xs">{ksh(m.stake)}</TableCell>
+                <TableCell className="text-xs">{ksh(m.house_fee)}</TableCell>
+                <TableCell className="font-mono text-[11px]">{phone(m.creator_id)}<br />{phone(m.opponent_id)}</TableCell>
+                <TableCell className="font-mono text-[11px]">{phone(m.winner_id)}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleString()}</TableCell>
                 <TableCell>
-                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
-                    {a.event}
-                  </span>
-                </TableCell>
-                <TableCell className="text-xs">{a.detail || "—"}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {new Date(a.created_at).toLocaleString()}
+                  {(m.status === "waiting" || m.status === "active") && (
+                    <Button size="sm" variant="outline" disabled={busy === m.id} onClick={() => cancel(m)}>
+                      <X className="mr-1 h-3.5 w-3.5" />Cancel & refund
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -322,12 +408,12 @@ const Dashboard = ({
         </Table>
       </div>
     </Card>
-  </>
-);
+  );
+};
 
 const StatCard = ({
   label, value, icon: Icon, tone,
-}: { label: string; value: number; icon: React.ElementType; tone: "primary" | "win" | "lose" | "coin" }) => {
+}: { label: string; value: number | string; icon: React.ElementType; tone: "primary" | "win" | "lose" | "coin" }) => {
   const toneMap = {
     primary: "text-primary",
     win: "text-win",
@@ -339,168 +425,7 @@ const StatCard = ({
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Icon className={`h-3.5 w-3.5 ${toneMap[tone]}`} /> {label}
       </div>
-      <div className={`font-display text-3xl font-black ${toneMap[tone]}`}>{value.toLocaleString()}</div>
-    </Card>
-  );
-};
-
-/* ---------- Sessions ---------- */
-const SessionsPanel = ({
-  bots, profiles, onChange,
-}: { bots: Bot[]; profiles: Profile[]; onChange: () => void }) => {
-  const [q, setQ] = useState("");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [filter, setFilter] = useState<"all" | "connected" | "disconnected">("all");
-
-  const phoneByUser = useMemo(() => {
-    const m: Record<string, string> = {};
-    profiles.forEach((p) => { m[p.user_id] = p.phone; });
-    return m;
-  }, [profiles]);
-
-  const filtered = bots.filter((b) => {
-    if (filter === "connected" && b.status !== "connected") return false;
-    if (filter === "disconnected" && b.status === "connected") return false;
-    if (!q) return true;
-    const ql = q.toLowerCase();
-    return b.phone_number.includes(q) || (phoneByUser[b.user_id] || "").includes(q) || b.code.toLowerCase().includes(ql);
-  });
-
-  const toggleOne = (id: string) => {
-    const n = new Set(selected);
-    n.has(id) ? n.delete(id) : n.add(id);
-    setSelected(n);
-  };
-  const toggleAll = () => {
-    if (selected.size === filtered.length) setSelected(new Set());
-    else setSelected(new Set(filtered.map((b) => b.id)));
-  };
-
-  const disconnect = async (id: string) => {
-    const b = bots.find((x) => x.id === id);
-    if (!b) return;
-    const { error } = await supabase.from("bots")
-      .update({ status: "disconnected", disconnected_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    await supabase.from("activity_logs").insert({
-      user_id: b.user_id, event: "disconnect",
-      detail: `Session ${b.phone_number} disconnected by admin`,
-    });
-    toast.success("Disconnected");
-    onChange();
-  };
-
-  const delSession = async (id: string) => {
-    const b = bots.find((x) => x.id === id);
-    if (!b) return;
-    const { error } = await supabase.from("bots").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    await supabase.from("activity_logs").insert({
-      user_id: b.user_id, event: "session_deleted",
-      detail: `Session ${b.phone_number} force-removed`,
-    });
-    toast.success("Deleted");
-    setSelected((s) => { const n = new Set(s); n.delete(id); return n; });
-    onChange();
-  };
-
-  const bulkDelete = async () => {
-    if (selected.size === 0) return;
-    if (!confirm(`Delete ${selected.size} sessions?`)) return;
-    const ids = Array.from(selected);
-    const rows = bots.filter((b) => ids.includes(b.id));
-    const { error } = await supabase.from("bots").delete().in("id", ids);
-    if (error) return toast.error(error.message);
-    await supabase.from("activity_logs").insert(rows.map((r) => ({
-      user_id: r.user_id, event: "session_deleted",
-      detail: `Bulk delete: ${r.phone_number}`,
-    })));
-    toast.success(`Deleted ${ids.length} sessions`);
-    setSelected(new Set());
-    onChange();
-  };
-
-  return (
-    <Card className="bg-gradient-card p-4">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search phone / code" className="pl-9" />
-        </div>
-        <div className="flex gap-1 rounded-lg border border-border/60 p-1">
-          {(["all", "connected", "disconnected"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`rounded-md px-3 py-1 text-xs capitalize ${
-                filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-        <Button variant="destructive" size="sm" disabled={selected.size === 0} onClick={bulkDelete}>
-          <Trash2 className="mr-1 h-4 w-4" /> Bulk delete ({selected.size})
-        </Button>
-      </div>
-
-      <div className="max-h-[600px] overflow-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-8">
-                <Checkbox checked={selected.size > 0 && selected.size === filtered.length} onCheckedChange={toggleAll} />
-              </TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Deployed</TableHead>
-              <TableHead>Last active</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((b) => {
-              const since = new Date(b.deployed_at).getTime();
-              const duration = formatDuration(Date.now() - since);
-              return (
-                <TableRow key={b.id}>
-                  <TableCell>
-                    <Checkbox checked={selected.has(b.id)} onCheckedChange={() => toggleOne(b.id)} />
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{b.phone_number}</TableCell>
-                  <TableCell>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      b.status === "connected" ? "bg-win/20 text-win" : "bg-muted text-muted-foreground"
-                    }`}>
-                      {b.status}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {duration} ago
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(b.last_active).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      {b.status === "connected" && (
-                        <Button size="sm" variant="secondary" onClick={() => disconnect(b.id)}>
-                          <Power className="mr-1 h-3 w-3" /> Disconnect
-                        </Button>
-                      )}
-                      <Button size="sm" variant="destructive" onClick={() => delSession(b.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+      <div className={`font-display text-3xl font-black ${toneMap[tone]}`}>{typeof value === "number" ? value.toLocaleString() : value}</div>
     </Card>
   );
 };
@@ -509,7 +434,7 @@ const SessionsPanel = ({
 const UsersPanel = ({ profiles, onChange }: { profiles: Profile[]; onChange: () => void }) => {
   const [q, setQ] = useState("");
   const filtered = profiles.filter((p) =>
-    !q || p.phone.includes(q) || (p.email || "").toLowerCase().includes(q.toLowerCase()) || p.referral_code.toLowerCase().includes(q.toLowerCase())
+    !q || p.phone.includes(q) || (p.email || "").toLowerCase().includes(q.toLowerCase())
   );
 
   const adjustCoins = async (uid: string, delta: number) => {
@@ -553,7 +478,7 @@ const UsersPanel = ({ profiles, onChange }: { profiles: Profile[]; onChange: () 
               <TableHead>Phone</TableHead>
               <TableHead>Email</TableHead>
               <TableHead className="text-right">Coins</TableHead>
-              <TableHead>Bots</TableHead>
+              <TableHead>Games</TableHead>
               <TableHead>Last active</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -565,7 +490,7 @@ const UsersPanel = ({ profiles, onChange }: { profiles: Profile[]; onChange: () 
                 <TableCell className="font-mono text-xs">{p.phone}</TableCell>
                 <TableCell className="text-xs">{p.email || "—"}</TableCell>
                 <TableCell className="text-right font-bold text-coin">{p.coins}</TableCell>
-                <TableCell className="text-xs">{p.bots_deployed}</TableCell>
+                <TableCell className="text-xs">{p.games_played}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">
                   {new Date(p.last_active).toLocaleDateString()}
                 </TableCell>
@@ -593,42 +518,6 @@ const UsersPanel = ({ profiles, onChange }: { profiles: Profile[]; onChange: () 
     </Card>
   );
 };
-
-/* ---------- Pairing logs ---------- */
-const PairingPanel = ({ logs }: { logs: PairingLog[] }) => (
-  <Card className="bg-gradient-card p-4">
-    <div className="max-h-[600px] overflow-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Phone</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Detail</TableHead>
-            <TableHead>When</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {logs.map((l) => (
-            <TableRow key={l.id}>
-              <TableCell className="font-mono text-xs">{l.phone_number}</TableCell>
-              <TableCell>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  l.status === "success" ? "bg-win/20 text-win" : "bg-lose/20 text-lose"
-                }`}>
-                  {l.status}
-                </span>
-              </TableCell>
-              <TableCell className="text-xs">{l.detail || "—"}</TableCell>
-              <TableCell className="text-xs text-muted-foreground">
-                {new Date(l.created_at).toLocaleString()}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  </Card>
-);
 
 /* ---------- Activity logs ---------- */
 const ActivityPanel = ({ logs, profiles }: { logs: ActivityLog[]; profiles: Profile[] }) => {
@@ -730,8 +619,6 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
   const [consumerSecret, setConsumerSecret] = useState("");
   const [passkey, setPasskey] = useState("");
   const [env, setEnv] = useState<"sandbox" | "production">("sandbox");
-  const [maxSessions, setMaxSessions] = useState("");
-  const [maxAttempts, setMaxAttempts] = useState("");
   const [saving, setSaving] = useState(false);
 
   const asStr = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
@@ -746,8 +633,6 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
     setPasskey(asStr(settings.mpesa_passkey));
     const e = asStr(settings.mpesa_env);
     setEnv(e === "production" ? "production" : "sandbox");
-    setMaxSessions(String(settings.max_sessions_per_user ?? ""));
-    setMaxAttempts(String(settings.max_pairing_attempts_per_hour ?? ""));
   }, [settings]);
 
   const save = async (key: string, value: unknown, label: string) => {
@@ -864,32 +749,6 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
         </div>
       </Card>
 
-      <Card className="bg-gradient-card p-4">
-        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
-          Max sessions per user
-        </h3>
-        <div className="mt-3 flex gap-2">
-          <Input type="number" value={maxSessions} onChange={(e) => setMaxSessions(e.target.value)} />
-          <Button disabled={saving} onClick={() => save("max_sessions_per_user", Number(maxSessions), "Max sessions")}>
-            Save
-          </Button>
-        </div>
-      </Card>
-
-      <Card className="bg-gradient-card p-4">
-        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
-          Anti-spam: pairing attempts per hour
-        </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Maximum pairing requests allowed per phone number per hour.
-        </p>
-        <div className="mt-3 flex gap-2">
-          <Input type="number" value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} />
-          <Button disabled={saving} onClick={() => save("max_pairing_attempts_per_hour", Number(maxAttempts), "Max pairing attempts")}>
-            Save
-          </Button>
-        </div>
-      </Card>
     </div>
   );
 };
@@ -1010,11 +869,11 @@ const ServicesPanel = () => {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Slug</label>
-              <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="bot, vault" className="mt-1 font-mono" />
+              <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="virtual-numbers" className="mt-1 font-mono" />
             </div>
             <div>
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Name</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="WhatsApp Bot" className="mt-1" />
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Virtual Numbers" className="mt-1" />
             </div>
           </div>
           <div>
@@ -1212,11 +1071,11 @@ const PricingPanel = () => {
         <div className="mt-3 grid gap-2">
           <div>
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Service key</label>
-            <Input value={serviceKey} onChange={(e) => setServiceKey(e.target.value)} placeholder="e.g. bot_deploy" className="mt-1 font-mono" />
+            <Input value={serviceKey} onChange={(e) => setServiceKey(e.target.value)} placeholder="e.g. virtual_numbers" className="mt-1 font-mono" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Display name</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. WhatsApp Bot Deploy" className="mt-1" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Virtual Numbers" className="mt-1" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -1352,11 +1211,11 @@ const ChildProjectsPanel = () => {
         <div className="mt-3 grid gap-2">
           <div>
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Slug</label>
-            <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="bot, paywall, vault" className="mt-1 font-mono" />
+            <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="virtual-numbers" className="mt-1 font-mono" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Display name</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="WhatsApp Bot" className="mt-1" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Virtual Numbers" className="mt-1" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Hidden URL</label>
@@ -1364,7 +1223,7 @@ const ChildProjectsPanel = () => {
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Linked service key (optional)</label>
-            <Input value={serviceKey} onChange={(e) => setServiceKey(e.target.value)} placeholder="bot_deploy" className="mt-1 font-mono" />
+            <Input value={serviceKey} onChange={(e) => setServiceKey(e.target.value)} placeholder="virtual_numbers" className="mt-1 font-mono" />
           </div>
           <div className="flex gap-2">
             <Button disabled={saving} onClick={submit}>
@@ -1464,8 +1323,7 @@ const MessagesPanel = ({ profiles }: { profiles: Profile[] }) => {
     (p) =>
       !search ||
       p.phone.includes(search) ||
-      (p.email || "").toLowerCase().includes(search.toLowerCase()) ||
-      p.referral_code.toLowerCase().includes(search.toLowerCase())
+      (p.email || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const phoneFor = (uid: string | null) =>
@@ -1562,7 +1420,7 @@ const MessagesPanel = ({ profiles }: { profiles: Profile[] }) => {
                   }`}
                 >
                   <span className="font-mono">{p.phone}</span>
-                  <span className="text-muted-foreground">{p.email || p.referral_code}</span>
+                  <span className="text-muted-foreground">{p.email || "—"}</span>
                 </button>
               ))}
             </div>

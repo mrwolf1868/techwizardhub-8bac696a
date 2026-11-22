@@ -8,7 +8,7 @@ export default {
     container: { center: true, padding: "1rem", screens: { "2xl": "1400px" } },
     extend: {
       fontFamily: {
-        display: ["Orbitron", "system-ui", "sans-serif"],
+        display: ["Trebuchet MS", "Arial", "sans-serif"],
         sans: ["Space Grotesk", "system-ui", "sans-serif"],
       },
       colors: {

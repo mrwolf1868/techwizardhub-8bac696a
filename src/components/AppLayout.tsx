@@ -1,58 +1,98 @@
 import { useEffect, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Link, Navigate, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { BriefcaseBusiness, Gamepad2, Home, Plus, ShieldCheck, UserRound, Wallet as WalletIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/integrations/supabase/client";
-import { AppHeader } from "./AppHeader";
-import { BottomNav } from "./BottomNav";
-import { AgreementGate } from "./AgreementGate";
+import { MessagesInbox } from "./MessagesInbox";
+
+const nav = [
+  { to: "/", title: "Home", icon: Home },
+  { to: "/games", title: "Games", icon: Gamepad2 },
+  { to: "/services", title: "Services", icon: BriefcaseBusiness },
+  { to: "/buy", title: "Deposit", icon: Plus },
+  { to: "/profile", title: "Profile", icon: UserRound },
+];
+
+export const formatKsh = (n: number) => `KSh ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const init = useUserStore((s) => s.init);
   const syncFromSupabase = useUserStore((s) => s.syncFromSupabase);
   const userId = useUserStore((s) => s.userId);
+  const coins = useUserStore((s) => s.coins);
+  const isAdmin = useUserStore((s) => s.isAdmin);
+  const phone = useUserStore((s) => s.phoneNumber);
   const [checking, setChecking] = useState(true);
   const [authed, setAuthed] = useState<boolean>(!!userId);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     init();
-
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuthed(!!session);
-      if (session) {
-        setTimeout(() => {
-          syncFromSupabase();
-        }, 0);
-      }
+      if (session) setTimeout(() => { syncFromSupabase(); }, 0);
     });
-
     supabase.auth.getSession().then(({ data }) => {
       setAuthed(!!data.session);
       if (data.session) syncFromSupabase();
       setChecking(false);
     });
-
     return () => sub.subscription.unsubscribe();
   }, [init, syncFromSupabase]);
 
-  if (checking) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-muted-foreground">
-        Loading...
-      </div>
-    );
-  }
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [location.pathname]);
 
-  if (!authed) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
+  if (checking) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
+  if (!authed) return <Navigate to="/login" state={{ from: location }} replace />;
+
+  const initial = (phone || "P").replace(/\D/g, "").slice(-1) || "P";
 
   return (
-    <div className="relative flex min-h-screen flex-col">
-      <AppHeader />
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-28 pt-4">{children}</main>
-      <BottomNav />
-      <AgreementGate />
+    <div className="techwolf-app">
+      <header className="topbar">
+        <Button variant="ghost" className="brand-button" onClick={() => navigate("/")}>
+          <span><strong>TECHWIZARD Hub</strong><small>PLAY • COMPETE • WIN</small></span>
+        </Button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Button variant="ghost" className="header-wallet" onClick={() => navigate("/buy")}>
+            <WalletIcon /><span><small>Balance</small><strong>{formatKsh(coins)}</strong></span>
+          </Button>
+          <MessagesInbox />
+          {isAdmin && (
+            <Button asChild variant="ghost" size="icon" aria-label="Admin panel">
+              <Link to="/admin"><ShieldCheck className="h-4 w-4 text-primary" /></Link>
+            </Button>
+          )}
+          <Button size="icon" className="player-avatar" aria-label="Open profile" onClick={() => navigate("/profile")}>
+            {phone ? initial : <UserRound />}
+          </Button>
+        </div>
+      </header>
+      <main className="app-content">{children}</main>
+      <nav className="bottom-navigation" aria-label="Main navigation">
+        {nav.map((item) => (
+          <NavLink key={item.to} to={item.to} end={item.to === "/"}
+            className={({ isActive }) => `inline-flex items-center justify-center rounded-md nav-item${isActive ? " active" : ""}`}>
+            <item.icon /><span>{item.title}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
+  );
+};
+
+export const PageSection = ({ title, children }: { title: string; children?: React.ReactNode }) => {
+  const navigate = useNavigate();
+  return (
+    <section className="page-section">
+      <Button variant="ghost" className="back-button" onClick={() => navigate("/")}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></svg>
+        Home
+      </Button>
+      <h1>{title}</h1>
+      {children}
+    </section>
   );
 };

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AppLayout } from "@/components/AppLayout";
+import { AppLayout, PageSection } from "@/components/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,10 +113,10 @@ const Buy = () => {
 
   return (
     <AppLayout>
-      <h2 className="font-display text-2xl font-black">Buy Coins</h2>
-      <p className="text-sm text-muted-foreground">1 KES = 1 coin · Pay via M-Pesa</p>
+      <PageSection title="Deposit">
+      <p className="text-sm text-muted-foreground">Top up your Balance with M-Pesa · KSh 1 = 1 coin</p>
 
-      <Card className="mt-4 border-coin/30 bg-gradient-card p-5 shadow-card">
+      <Card className="mt-4 max-w-xl border-coin/30 bg-gradient-card p-5 shadow-card">
         <div className="flex items-center gap-3">
           <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-coin shadow-coin">
             <Wallet className="h-6 w-6 text-coin-foreground" strokeWidth={2.5} />
@@ -201,6 +201,7 @@ const Buy = () => {
           🔒 Secure payment via Safaricom Daraja. Coins are credited automatically once your payment is confirmed.
         </p>
       </Card>
+      </PageSection>
     </AppLayout>
   );
 };

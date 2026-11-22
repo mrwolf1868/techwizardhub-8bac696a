@@ -8,6 +8,27 @@
       "when": 1795269492251,
       "tag": "0000_game_matches",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795331432599,
+      "tag": "0001_entry_fee_on_join",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795331447139,
+      "tag": "0002_lock_direct_settle",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795331470382,
+      "tag": "0003_admin_cancel_match",
+      "breakpoints": true
     }
   ]
 }

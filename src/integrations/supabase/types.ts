@@ -594,10 +594,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_cancel_match: { Args: { _id: string }; Returns: undefined }
+      game_charge_entry: {
+        Args: { _game: string; _stake: number; _uid: string }
+        Returns: undefined
+      }
       game_create_match: {
         Args: { _game: string; _stake: number; _state: string }
         Returns: string
       }
+      game_entry_fee: { Args: { _stake: number }; Returns: number }
       game_join_match: { Args: { _id: string }; Returns: undefined }
       game_move: {
         Args: { _id: string; _result: string; _state: string }

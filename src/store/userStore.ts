@@ -35,7 +35,6 @@ type UserState = {
   init: () => void;
   syncFromSupabase: () => Promise<void>;
   migrateLocalToAccount: (userId: string) => Promise<void>;
-  applyPendingReferral: (code: string) => void;
   acceptTerms: () => void;
   setPhone: (phone: string) => void;
   addCoins: (amount: number, type: Transaction["type"], description: string) => void;
@@ -43,7 +42,6 @@ type UserState = {
   recordGame: () => void;
   deployBot: (phoneNumber: string, code: string) => Bot | null;
   markBotConnected: (botId: string) => void;
-  redeemReferral: (code: string) => boolean;
   signOutLocal: () => void;
   reset: () => void;
 };
@@ -51,7 +49,6 @@ type UserState = {
 const generateReferralCode = () =>
   "TW" + Math.random().toString(36).substring(2, 8).toUpperCase();
 
-const LOCAL_REF_PENDING = "twh-pending-ref";
 
 export const useUserStore = create<UserState>()(
   persist(
@@ -140,13 +137,6 @@ export const useUserStore = create<UserState>()(
             }))
           );
         }
-      },
-
-      applyPendingReferral: (code) => {
-        const c = code.trim().toUpperCase();
-        if (!c) return;
-        localStorage.setItem(LOCAL_REF_PENDING, c);
-        setTimeout(() => get().redeemReferral(c), 0);
       },
 
       acceptTerms: () => set({ agreedToTerms: true }),
@@ -259,17 +249,6 @@ export const useUserStore = create<UserState>()(
             detail: `Bot connected for ${bot.phoneNumber}`,
           }).then();
         }
-      },
-
-      redeemReferral: (code) => {
-        const s = get();
-        if (!code || code === s.referralCode) return false;
-        const used = s.transactions.some(
-          (t) => t.type === "referral" && t.description.includes(code)
-        );
-        if (used) return false;
-        get().addCoins(30, "referral", `Referral bonus from ${code}`);
-        return true;
       },
 
       signOutLocal: () =>
