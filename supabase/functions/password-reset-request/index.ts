@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       const html = `
         <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#fff">
           <h1 style="color:#111">Password reset code</h1>
-          <p>Use this 6-digit code to reset your TECHWIZARD Hub password. It expires in 15 minutes.</p>
+          <p>Use this 6-digit code to reset your TECHWOLFpro password. It expires in 15 minutes.</p>
           <div style="font-size:32px;letter-spacing:8px;font-weight:900;text-align:center;padding:20px;background:#f4f4f5;border-radius:8px;margin:16px 0">${code}</div>
           <p style="color:#6b7280;font-size:12px">If you didn't request this, ignore this email.</p>
         </div>`;
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "TECHWIZARD Hub <onboarding@resend.dev>",
+          from: "TECHWOLFpro <onboarding@resend.dev>",
           to: [normalized],
           subject: `Your password reset code: ${code}`,
           html,

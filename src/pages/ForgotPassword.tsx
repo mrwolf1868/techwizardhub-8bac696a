@@ -52,7 +52,7 @@ const ForgotPassword = () => {
             <Rocket className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
           </div>
           <h1 className="font-display text-2xl font-black">
-            <span className="text-gradient-primary">TECHWIZARD</span> Hub
+            <span className="text-gradient-primary">TECHWOLF</span>pro
           </h1>
         </div>
         <h2 className="font-display text-xl font-bold">Reset password</h2>

@@ -96,7 +96,7 @@ export const MessagesInbox = () => {
       <SheetContent className="w-full max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="font-display tracking-wider">
-            <span className="text-gradient-primary">TECHWIZARD</span> Hub Messages
+            <span className="text-gradient-primary">TECHWOLF</span>pro Messages
           </SheetTitle>
         </SheetHeader>
         <div className="mt-4 space-y-3">

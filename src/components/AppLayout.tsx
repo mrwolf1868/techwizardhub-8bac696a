@@ -53,7 +53,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
     <div className="techwolf-app">
       <header className="topbar">
         <Button variant="ghost" className="brand-button" onClick={() => navigate("/")}>
-          <span><strong>TECHWIZARD Hub</strong><small>PLAY • COMPETE • WIN</small></span>
+          <span><strong>TECHWOLFpro</strong><small>PLAY • COMPETE • WIN</small></span>
         </Button>
         <div className="flex items-center gap-2 sm:gap-3">
           <Button variant="ghost" className="header-wallet" onClick={() => navigate("/buy")}>

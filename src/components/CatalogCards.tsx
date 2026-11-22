@@ -67,7 +67,7 @@ export const ServiceGrid = ({ items, loading }: { items: ServiceItem[]; loading:
           <img src={SERVICE_IMAGES[i % SERVICE_IMAGES.length]} alt={service.name} />
           <div>
             <h3>{service.name}</h3>
-            <p>{service.description || "Open this service inside TECHWIZARD Hub."}</p>
+            <p>{service.description || "Open this service inside TECHWOLFpro."}</p>
             <Button variant="ghost" className="service-open" aria-label={`Open ${service.name}`}
               onClick={(e) => { e.stopPropagation(); navigate(`/s/${service.slug}`); }}>
               <ArrowRight />

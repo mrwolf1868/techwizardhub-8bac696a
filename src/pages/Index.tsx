@@ -23,7 +23,7 @@ const Index = () => {
 
   return (
     <AppLayout>
-      <section className="promotion" aria-label="TECHWIZARD Hub promotions">
+      <section className="promotion" aria-label="TECHWOLFpro promotions">
         {slides.map((asset, i) => (
           <img key={asset.asset_id} src={asset.url} alt={slideAlt[i]} className={slide === i ? "promotion-slide is-active" : "promotion-slide"} />
         ))}

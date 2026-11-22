@@ -178,7 +178,7 @@ const Admin = () => {
           </div>
           <div>
             <div className="font-display text-sm font-black">Admin</div>
-            <div className="text-[10px] text-muted-foreground">TECHWIZARD Hub</div>
+            <div className="text-[10px] text-muted-foreground">TECHWOLFpro</div>
           </div>
         </div>
         <nav className="flex flex-col gap-1 p-2">
@@ -1334,7 +1334,7 @@ const MessagesPanel = ({ profiles }: { profiles: Profile[] }) => {
     if (mode === "individual" && !recipient) return toast.error("Select a recipient");
     setSending(true);
     const { error } = await supabase.from("messages").insert({
-      sender_label: "TECHWIZARD HUB",
+      sender_label: "TECHWOLFpro",
       title: title.trim() || null,
       body: body.trim(),
       recipient_id: mode === "broadcast" ? null : recipient,
@@ -1366,7 +1366,7 @@ const MessagesPanel = ({ profiles }: { profiles: Profile[] }) => {
           </div>
           <div>
             <h2 className="font-display text-sm font-black">Compose message</h2>
-            <p className="text-[10px] text-muted-foreground">Sent as TECHWIZARD HUB</p>
+            <p className="text-[10px] text-muted-foreground">Sent as TECHWOLFpro</p>
           </div>
         </div>
 
