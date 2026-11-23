@@ -57,7 +57,7 @@ const Register = () => {
       await migrateLocalToAccount(data.user.id);
       await syncFromSupabase();
     }
-    toast.success("Account created! Your welcome bonus has been added");
+    toast.success("Account created!");
     navigate("/");
   };
 
@@ -73,7 +73,7 @@ const Register = () => {
           </h1>
         </div>
         <h2 className="font-display text-xl font-bold">Create account</h2>
-        <p className="mb-4 text-sm text-muted-foreground">Get 70 welcome coins 🎉</p>
+        <p className="mb-4 text-sm text-muted-foreground">Create your account to start playing</p>
 
         <form onSubmit={submit} className="space-y-3">
           <div>

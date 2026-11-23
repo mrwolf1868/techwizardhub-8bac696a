@@ -69,7 +69,7 @@ export const useUserStore = create<UserState>()(
       init: () => {
         const s = get();
         if (s.initialized) return;
-        // Welcome bonus is granted server-side on registration (handle_new_user trigger).
+        // New accounts start at zero; balances come only from the server.
         // Do NOT credit coins locally — only a logged-in user will see their balance after sync.
         set({
           initialized: true,
@@ -123,9 +123,9 @@ export const useUserStore = create<UserState>()(
       migrateLocalToAccount: async (userId) => {
         const s = get();
 
-        // Server-side trigger already grants the 70-coin welcome bonus on registration.
+        // Coins and transactions are server-authoritative.
         // We ONLY migrate bots from the device — coins and transactions are authoritative on the server
-        // to prevent any duplication of the welcome bonus or replayed local activity.
+        // Never replay local activity.
         if (s.bots.length > 0) {
           await supabase.from("bots").insert(
             s.bots.map((b) => ({
