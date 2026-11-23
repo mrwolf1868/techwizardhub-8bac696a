@@ -19,7 +19,7 @@
     --brand-pink: 37 71% 56%; --overlay: 220 14% 7%;
     --coin: 42 76% 61%; --coin-foreground: 220 14% 7%;
     --win: 152 47% 49%; --lose: 0 68% 56%;
-    --board-light: 37 67% 83%; --board-dark: 28 36% 55%; --piece-light: 43 78% 90%; --piece-light-edge: 38 40% 70%; --piece-dark: 0 0% 0%; --piece-outline: 0 0% 0%; --board-frame: 25 30% 22%;
+    --board-light: 34 42% 70%; --board-dark: 25 34% 42%; --piece-light: 46 92% 91%; --piece-light-edge: 38 40% 70%; --piece-dark: 0 0% 0%; --piece-outline: 0 0% 0%; --board-frame: 25 30% 22%;
     --board-selection: 48 100% 60%; --board-target: 48 100% 45%;
     --piece-shadow: 0 2px 3px hsl(var(--background) / .45);
     --brand-gradient: linear-gradient(115deg, hsl(var(--primary)), hsl(var(--primary-glow)));

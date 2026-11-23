@@ -215,7 +215,7 @@ const GameMatch = () => {
                   <div><small>Entry fee</small><strong>KSh {entryFee(m.stake)}</strong></div>
                   <div className="prize-win"><small>Winner gets</small><strong>KSh {winnerPayout(m.stake)}</strong></div>
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground">Each player paid KSh {entryCost(m.stake)} when the match started. A draw returns both stakes.</p>
+                <p className="mt-3 text-xs text-muted-foreground">{m.status === "cancelled" ? "This match did not start." : `Each player pays KSh ${entryCost(m.stake)} when the match starts. A draw returns both stakes.`}</p>
               </div>
               {playing && (
                 <Button variant="destructive" className="mt-3 w-full" onClick={() => setConfirmOpen(true)}><Flag /> Quit match</Button>

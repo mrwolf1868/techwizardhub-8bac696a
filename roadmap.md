@@ -1,4 +1,9 @@
 # Requested changes
+- [x] Pure black and cream vector pieces for chess and draughts.
+- [x] Searches cost nothing; both players are charged when an opponent joins; online players get a Join notification.
+- [x] Confirm before leaving a search or quitting a match, with a forfeit warning.
+- [x] Real M-Pesa payouts for player and admin profit withdrawals, refused when payout keys are missing.
+- [ ] Live payouts — waiting on the M-Pesa payout (B2C) keys from Safaricom.
 - [x] Keep match fees atomic, settle both stakes correctly, and count games when a match finishes.
 - [x] Add private friend codes and targeted challenges to online players, with the invited player and stake visible.
 - [x] Add player M-Pesa withdrawal requests, admin review, and automatic refunds when rejected.
