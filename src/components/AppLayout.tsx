@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/integrations/supabase/client";
 import { MessagesInbox } from "./MessagesInbox";
+import { MatchInvites } from "./MatchInvites";
 
 const nav = [
   { to: "/", title: "Home", icon: Home },
@@ -59,6 +60,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="techwolf-app">
+      <MatchInvites />
       <header className="topbar">
         <Button variant="ghost" className="brand-button" onClick={() => navigate("/")}>
           <span><strong>TECHWOLFpro</strong><small>PLAY • COMPETE • WIN</small></span>

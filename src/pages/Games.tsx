@@ -117,12 +117,9 @@ const Lobby = ({ game }: { game: GameId }) => {
 
     await syncFromSupabase();
     await refreshMatches();
-    if (matchMode === "open") nav(`/games/match/${data}`);
-    if (matchMode === "friend") {
-      setFriendCode(code);
-      toast.success("Friend match created. Share the code to invite your opponent.");
-    }
+    if (matchMode === "friend") setFriendCode(code);
     if (matchMode === "challenge") toast.success("Invitation sent to the online player");
+    nav(`/games/match/${data}`);
   };
 
   const join = async (match: M) => {
@@ -157,18 +154,18 @@ const Lobby = ({ game }: { game: GameId }) => {
           <span className="eyebrow">{info.tag}</span>
           <h2>Choose how to play</h2>
           <div className="mode-picker" role="group" aria-label="Choose match mode">
-            <Button variant={mode === "open" ? "default" : "outline"} aria-pressed={mode === "open"} onClick={() => setMode("open")}>Open lobby</Button>
+            <Button variant={mode === "open" ? "default" : "outline"} aria-pressed={mode === "open"} onClick={() => setMode("open")}>Find opponent</Button>
             <Button variant={mode === "friend" ? "default" : "outline"} aria-pressed={mode === "friend"} onClick={() => setMode("friend")}>Play with a friend</Button>
-            <Button variant={mode === "online" ? "default" : "outline"} aria-pressed={mode === "online"} onClick={() => setMode("online")}>Challenge online</Button>
+            <Button variant={mode === "online" ? "default" : "outline"} aria-pressed={mode === "online"} onClick={() => setMode("online")}>Challenge a player</Button>
           </div>
 
-          <p className="text-sm text-muted-foreground">Choose a stake. Each player pays the stake plus a 5% entry fee; the winner receives both stakes.</p>
+          <p className="text-sm text-muted-foreground">Choose a stake. Nothing is charged while searching. When an opponent joins, each player pays the stake plus a 5% entry fee, and the winner receives both stakes.</p>
           <label className="field-label" htmlFor="stake">Stake (KSh)</label>
           <Input id="stake" type="number" min={1} max={100000} value={stake} onChange={(event) => setStake(event.target.value)} className="mt-2 h-12" />
-          <p className="mt-2 text-xs text-muted-foreground">You pay {entryCost(amount)} · Winner receives {amount * 2}</p>
+          <p className="mt-2 text-xs text-muted-foreground">You pay KSh {entryCost(amount)} when the match starts · Winner receives KSh {amount * 2}</p>
 
           {mode === "open" && (
-            <Button className="mt-4" disabled={busy} onClick={() => createMatch("open")}>Create open match<ArrowRight /></Button>
+            <Button className="mt-4" disabled={busy} onClick={() => createMatch("open")}>Search for an opponent<ArrowRight /></Button>
           )}
 
           {mode === "friend" && (
@@ -189,7 +186,7 @@ const Lobby = ({ game }: { game: GameId }) => {
                   onChange={(event) => setCodeToJoin(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} placeholder="6-character code" />
                 <Button disabled={busy} onClick={joinByCode}>Join</Button>
               </div>
-              <small>Both players pay the same stake and entry fee.</small>
+              <small>Both players pay the same stake and entry fee once the friend joins.</small>
             </div>
           )}
 
@@ -202,7 +199,7 @@ const Lobby = ({ game }: { game: GameId }) => {
                 <div className="online-player-row" key={playerId}>
                   <span><i aria-hidden="true" /> Player · {playerId.slice(-4).toUpperCase()}</span>
                   <Button size="sm" disabled={busy} onClick={() => createMatch("challenge", playerId)}>
-                    Invite · KSh {entryCost(amount)}
+                    Invite · KSh {amount}
                   </Button>
                 </div>
               ))}
@@ -241,7 +238,7 @@ const Lobby = ({ game }: { game: GameId }) => {
             </div>
           );
         })}
-        <p className="mt-3 text-xs text-muted-foreground">Entry fee: {entryFee(amount)} KSh per player · Fees are charged when you create or join a match.</p>
+        <p className="mt-3 text-xs text-muted-foreground">Entry fee: {entryFee(amount)} KSh per player · Charged only when an opponent joins.</p>
       </div>
     </PageSection>
   );

@@ -23,6 +23,7 @@ const schema = z.object({
 });
 
 const PRESETS = [70, 150, 350, 700, 1500];
+const WITHDRAW_LABEL: Record<string, string> = { pending: "Queued", processing: "Sending", paid: "Paid", failed: "Failed · refunded", rejected: "Rejected · refunded" };
 type WithdrawalRow = { id: string; amount: number; phone: string; status: string; created_at: string };
 
 // Persistent client id (used by callback to map payment → this browser)
@@ -57,6 +58,12 @@ const Buy = () => {
   }, [userId]);
 
   useEffect(() => { void loadWithdrawals(); }, [loadWithdrawals]);
+  const hasProcessing = withdrawals.some((row) => row.status === "processing" || row.status === "pending");
+  useEffect(() => {
+    if (!hasProcessing) return;
+    const timer = window.setInterval(() => { void loadWithdrawals(); void syncFromSupabase(); }, 8000);
+    return () => window.clearInterval(timer);
+  }, [hasProcessing, loadWithdrawals, syncFromSupabase]);
 
   useEffect(() => {
     if (profilePhone) {
@@ -142,16 +149,24 @@ const Buy = () => {
     if (!Number.isInteger(requestedAmount) || requestedAmount < 1) return toast.error("Enter a valid amount");
     if (requestedAmount > coins) return toast.error("Insufficient balance");
 
+    if (requestedAmount < 10) return toast.error("The minimum withdrawal is KSh 10");
+
     setWithdrawBusy(true);
-    const { error } = await supabase.rpc("request_wallet_withdrawal", {
-      _amount: requestedAmount,
-      _phone: normalized,
+    const { data, error } = await supabase.functions.invoke("mpesa-payout", {
+      body: { action: "wallet", amount: requestedAmount, phone: normalized },
     });
     setWithdrawBusy(false);
-    if (error) return toast.error(error.message);
+    if (error || !data?.success) {
+      let message = data?.error as string | undefined;
+      if (!message && error && "context" in error) {
+        try { message = (await (error as { context: Response }).context.json()).error; } catch { /* ignore */ }
+      }
+      await Promise.all([syncFromSupabase(), loadWithdrawals()]);
+      return toast.error(message || "The withdrawal could not be completed. No money was taken.");
+    }
     setWithdrawAmount("");
     await Promise.all([syncFromSupabase(), loadWithdrawals()]);
-    toast.success("Withdrawal request sent. Your balance is held until it is paid or rejected.");
+    toast.success("Withdrawal sent to M-Pesa. You will receive an SMS once Safaricom completes it.");
   };
 
   return (
@@ -254,7 +269,7 @@ const Buy = () => {
         </p>
       </Card>
       </> : <>
-        <p className="text-sm text-muted-foreground">Request an M-Pesa payout from your available balance.</p>
+        <p className="text-sm text-muted-foreground">Withdraw your balance directly to M-Pesa.</p>
         <div className="wallet-layout mt-4">
           <Card className="max-w-xl border-border bg-card p-5">
             <div className="flex items-center gap-3">
@@ -270,23 +285,23 @@ const Buy = () => {
             <Input id="withdraw-phone" inputMode="tel" placeholder="0712345678 or 254712345678" value={withdrawPhone}
               onChange={(event) => setWithdrawPhone(event.target.value)} maxLength={18} className="mt-2" disabled={withdrawBusy} />
             <Label htmlFor="withdraw-amount" className="mt-4 block text-xs uppercase tracking-widest text-muted-foreground">Amount (KSh)</Label>
-            <Input id="withdraw-amount" type="number" min={1} max={coins} value={withdrawAmount}
+            <Input id="withdraw-amount" type="number" min={10} max={coins} value={withdrawAmount}
               onChange={(event) => setWithdrawAmount(event.target.value)} className="mt-2" disabled={withdrawBusy} />
             <Button className="mt-4 w-full" onClick={requestWithdrawal} disabled={withdrawBusy || coins < 1}>
-              {withdrawBusy ? "Submitting request…" : "Request withdrawal"}
+              {withdrawBusy ? "Sending to M-Pesa…" : "Withdraw to M-Pesa"}
             </Button>
-            <p className="mt-3 text-xs text-muted-foreground">Requests are reviewed by the team. Coins are deducted now and returned automatically if a request is rejected. Payouts are sent manually.</p>
+            <p className="mt-3 text-xs text-muted-foreground">Money is sent straight to your M-Pesa. If Safaricom declines the payout, your balance is returned automatically.</p>
           </Card>
           <div className="transaction-history">
             <h2>Withdrawal history</h2>
-            {withdrawals.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">No withdrawal requests yet.</p> : withdrawals.map((withdrawal) => (
+            {withdrawals.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">No withdrawals yet.</p> : withdrawals.map((withdrawal) => (
               <div key={withdrawal.id} className="transaction-row">
                 <div className="transaction-icon"><History /></div>
                 <div className="flex-1">
                   <strong>{formatKsh(withdrawal.amount)} to +{withdrawal.phone}</strong>
                   <small>{new Date(withdrawal.created_at).toLocaleString()}</small>
                 </div>
-                <strong className="capitalize text-muted-foreground">{withdrawal.status}</strong>
+                <strong className={`withdraw-status status-${withdrawal.status}`}>{WITHDRAW_LABEL[withdrawal.status] ?? withdrawal.status}</strong>
               </div>
             ))}
           </div>

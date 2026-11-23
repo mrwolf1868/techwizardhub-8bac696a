@@ -85,7 +85,7 @@ type Match = {
 type FeeTx = { amount: number; created_at: string };
 type ProfitSummary = { total_fees: number; total_withdrawn: number; available: number };
 type WalletWithdrawal = { id: string; user_id: string; phone: string; amount: number; status: string; created_at: string; processed_at: string | null };
-type ProfitWithdrawal = { id: string; created_by: string; phone: string; amount: number; created_at: string };
+type ProfitWithdrawal = { id: string; created_by: string; phone: string; amount: number; status: string; result_desc: string | null; created_at: string };
 
 type MpesaTx = {
   id: string;
@@ -132,7 +132,7 @@ const Admin = () => {
       supabase.from("admin_settings").select("key, value"),
       supabase.from("wallet_withdrawals").select("id,user_id,phone,amount,status,created_at,processed_at").order("created_at", { ascending: false }).limit(200),
       supabase.rpc("admin_get_profit_summary"),
-      supabase.from("admin_profit_withdrawals").select("id,created_by,phone,amount,created_at").order("created_at", { ascending: false }).limit(100),
+      supabase.from("admin_profit_withdrawals").select("id,created_by,phone,amount,status,result_desc,created_at").order("created_at", { ascending: false }).limit(100),
     ]);
     setProfiles((p || []) as Profile[]);
     setMatches((gm || []) as Match[]);
@@ -647,27 +647,53 @@ const WithdrawalsPanel = ({
     if (adminPhone) setPhone((current) => current || adminPhone);
   }, [adminPhone]);
 
+  const [payoutReady, setPayoutReady] = useState<boolean | null>(null);
+  useEffect(() => {
+    void supabase.functions.invoke("mpesa-payout", { body: { action: "status" } })
+      .then(({ data }) => setPayoutReady(!!data?.ready), () => setPayoutReady(false));
+  }, []);
+
+  const callPayout = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke("mpesa-payout", { body });
+    if (!error && data?.success) return null;
+    let message = data?.error as string | undefined;
+    if (!message && error && "context" in error) {
+      try { message = (await (error as { context: Response }).context.json()).error; } catch { /* ignore */ }
+    }
+    return message || "The payout could not be sent";
+  };
+
   const recordProfitWithdrawal = async () => {
     const requested = Number(amount);
     const normalized = normalizePhone(phone);
     if (!canWithdrawProfit(requested, profitSummary.available)) return toast.error("Enter an amount within the available profit");
+    if (requested < 10) return toast.error("The minimum payout is KSh 10");
     if (!normalized || !/^254[17]\d{8}$/.test(normalized)) return toast.error("Enter a valid Safaricom number");
     setSavingProfit(true);
-    const { error } = await supabase.rpc("admin_record_profit_withdrawal", { _amount: requested, _phone: normalized });
+    const failure = await callPayout({ action: "profit", amount: requested, phone: normalized });
     setSavingProfit(false);
-    if (error) return toast.error(error.message);
-    setAmount("");
-    toast.success("Profit withdrawal recorded");
     await onChange();
+    if (failure) return toast.error(failure);
+    setAmount("");
+    toast.success("Payout sent to M-Pesa. Available profit updates when Safaricom confirms.");
   };
 
-  const resolveRequest = async (request: WalletWithdrawal, status: "paid" | "rejected") => {
-    if (status === "paid" && !confirm("Confirm that you have already sent this M-Pesa payout?")) return;
+  const sendRequest = async (request: WalletWithdrawal) => {
     setBusyId(request.id);
-    const { error } = await supabase.rpc("admin_resolve_wallet_withdrawal", { _id: request.id, _status: status });
+    const failure = await callPayout({ action: "send_pending", withdrawalId: request.id });
+    setBusyId(null);
+    await onChange();
+    if (failure) return toast.error(failure);
+    toast.success("Payout sent to M-Pesa");
+  };
+
+  const rejectRequest = async (request: WalletWithdrawal) => {
+    if (!confirm("Reject this request and return the balance to the player?")) return;
+    setBusyId(request.id);
+    const { error } = await supabase.rpc("admin_resolve_wallet_withdrawal", { _id: request.id, _status: "rejected" });
     setBusyId(null);
     if (error) return toast.error(error.message);
-    toast.success(status === "paid" ? "Withdrawal marked paid" : "Request rejected and balance returned");
+    toast.success("Request rejected and balance returned");
     await onChange();
   };
 
@@ -683,8 +709,11 @@ const WithdrawalsPanel = ({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="bg-gradient-card p-4">
-          <h2 className="font-display text-sm font-bold">Record completed profit withdrawal</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Send the M-Pesa payout first. Recording it reduces the available fees and the admin balance.</p>
+          <h2 className="font-display text-sm font-bold">Withdraw profit to M-Pesa</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Sends your match fees straight to M-Pesa. Available profit drops only by the amount sent; failed payouts return to profit.</p>
+          <div className={`payout-setup mt-3 ${payoutReady ? "ready" : ""}`} role="status">
+            {payoutReady === null ? "Checking M-Pesa payout setup…" : payoutReady ? "M-Pesa payouts are ready." : "M-Pesa payouts are not set up yet. Withdrawals are refused until the payout keys are added securely."}
+          </div>
           <div className="mt-4 grid gap-3">
             <div>
               <label htmlFor="profit-phone" className="text-xs text-muted-foreground">M-Pesa number</label>
@@ -694,19 +723,20 @@ const WithdrawalsPanel = ({
               <label htmlFor="profit-amount" className="text-xs text-muted-foreground">Amount (KSh)</label>
               <Input id="profit-amount" type="number" min={1} max={profitSummary.available} value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-1" />
             </div>
-            <Button disabled={savingProfit || profitSummary.available < 1} onClick={recordProfitWithdrawal}>
-              {savingProfit ? "Recording…" : "Record withdrawal"}
+            <Button disabled={savingProfit || profitSummary.available < 10 || payoutReady === false} onClick={recordProfitWithdrawal}>
+              {savingProfit ? "Sending…" : "Withdraw to M-Pesa"}
             </Button>
           </div>
           {profitWithdrawals.length > 0 && (
             <div className="mt-5 overflow-auto">
               <h3 className="mb-2 text-xs font-bold uppercase text-muted-foreground">Recent withdrawals</h3>
               <Table>
-                <TableHeader><TableRow><TableHead>Amount</TableHead><TableHead>Number</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Amount</TableHead><TableHead>Number</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
                 <TableBody>{profitWithdrawals.slice(0, 10).map((withdrawal) => (
                   <TableRow key={withdrawal.id}>
                     <TableCell>{ksh(withdrawal.amount)}</TableCell>
                     <TableCell className="font-mono text-xs">{withdrawal.phone}</TableCell>
+                    <TableCell className="text-xs capitalize" title={withdrawal.result_desc ?? undefined}>{withdrawal.status}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{new Date(withdrawal.created_at).toLocaleDateString()}</TableCell>
                   </TableRow>
                 ))}</TableBody>
@@ -717,7 +747,7 @@ const WithdrawalsPanel = ({
 
         <Card className="bg-gradient-card p-4">
           <h2 className="font-display text-sm font-bold">Player withdrawal requests</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Send payouts manually, then mark them paid. Rejected requests return coins automatically.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Player withdrawals go to M-Pesa automatically. Queued requests can be sent or rejected; failed and rejected ones return the balance.</p>
           <div className="mt-3 max-h-[520px] overflow-auto">
             <Table>
               <TableHeader><TableRow><TableHead>Player</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
@@ -730,8 +760,8 @@ const WithdrawalsPanel = ({
                     <TableCell className="capitalize">{request.status}</TableCell>
                     <TableCell>
                       {request.status === "pending" ? <div className="flex gap-1">
-                        <Button size="sm" disabled={busyId === request.id} onClick={() => resolveRequest(request, "paid")}>Mark paid</Button>
-                        <Button size="sm" variant="outline" disabled={busyId === request.id} onClick={() => resolveRequest(request, "rejected")}>Reject</Button>
+                        <Button size="sm" disabled={busyId === request.id || payoutReady === false} onClick={() => sendRequest(request)}>Send</Button>
+                        <Button size="sm" variant="outline" disabled={busyId === request.id} onClick={() => rejectRequest(request)}>Reject</Button>
                       </div> : <span className="text-xs text-muted-foreground">{request.processed_at ? new Date(request.processed_at).toLocaleDateString() : "—"}</span>}
                     </TableCell>
                   </TableRow>

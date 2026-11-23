@@ -50,6 +50,13 @@
       "when": 1795397772119,
       "tag": "0006_secure_targeted_match_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795420835873,
+      "tag": "0007_charge_on_join_and_mpesa_payouts",
+      "breakpoints": true
     }
   ]
 }

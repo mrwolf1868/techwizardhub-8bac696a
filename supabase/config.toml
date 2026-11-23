@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.techwolf254-get-service-price]
 verify_jwt = false
+
+[functions.mpesa-payout-result]
+verify_jwt = false

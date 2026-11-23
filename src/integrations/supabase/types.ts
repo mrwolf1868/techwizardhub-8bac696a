@@ -44,24 +44,42 @@ export type Database = {
       admin_profit_withdrawals: {
         Row: {
           amount: number
+          conversation_id: string | null
           created_at: string
           created_by: string
           id: string
+          mpesa_receipt: string | null
+          originator_conversation_id: string | null
           phone: string
+          processed_at: string | null
+          result_desc: string | null
+          status: string
         }
         Insert: {
           amount: number
+          conversation_id?: string | null
           created_at?: string
           created_by: string
           id?: string
+          mpesa_receipt?: string | null
+          originator_conversation_id?: string | null
           phone: string
+          processed_at?: string | null
+          result_desc?: string | null
+          status?: string
         }
         Update: {
           amount?: number
+          conversation_id?: string | null
           created_at?: string
           created_by?: string
           id?: string
+          mpesa_receipt?: string | null
+          originator_conversation_id?: string | null
           phone?: string
+          processed_at?: string | null
+          result_desc?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -179,6 +197,7 @@ export type Database = {
       game_matches: {
         Row: {
           created_at: string
+          creator_charged: boolean
           creator_id: string
           game_type: string
           house_fee: number
@@ -196,6 +215,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          creator_charged?: boolean
           creator_id: string
           game_type: string
           house_fee?: number
@@ -213,6 +233,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          creator_charged?: boolean
           creator_id?: string
           game_type?: string
           house_fee?: number
@@ -625,31 +646,43 @@ export type Database = {
       wallet_withdrawals: {
         Row: {
           amount: number
+          conversation_id: string | null
           created_at: string
           id: string
+          mpesa_receipt: string | null
+          originator_conversation_id: string | null
           phone: string
           processed_at: string | null
           processed_by: string | null
+          result_desc: string | null
           status: string
           user_id: string
         }
         Insert: {
           amount: number
+          conversation_id?: string | null
           created_at?: string
           id?: string
+          mpesa_receipt?: string | null
+          originator_conversation_id?: string | null
           phone: string
           processed_at?: string | null
           processed_by?: string | null
+          result_desc?: string | null
           status?: string
           user_id: string
         }
         Update: {
           amount?: number
+          conversation_id?: string | null
           created_at?: string
           id?: string
+          mpesa_receipt?: string | null
+          originator_conversation_id?: string | null
           phone?: string
           processed_at?: string | null
           processed_by?: string | null
+          result_desc?: string | null
           status?: string
           user_id?: string
         }
@@ -722,6 +755,35 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      payout_complete: {
+        Args: {
+          _conversation_id: string
+          _desc: string
+          _id: string
+          _kind: string
+          _originator_id: string
+          _receipt: string
+          _success: boolean
+        }
+        Returns: string
+      }
+      payout_mark_processing: {
+        Args: {
+          _conversation_id: string
+          _id: string
+          _kind: string
+          _originator_id: string
+        }
+        Returns: undefined
+      }
+      payout_reserve_profit: {
+        Args: { _amount: number; _phone: string; _uid: string }
+        Returns: string
+      }
+      payout_reserve_wallet: {
+        Args: { _amount: number; _phone: string; _uid: string }
+        Returns: string
       }
       request_wallet_withdrawal: {
         Args: { _amount: number; _phone: string }
