@@ -29,18 +29,26 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
     init();
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       setAuthed(!!session);
-      if (session) setTimeout(() => { syncFromSupabase(); }, 0);
+      if (session && event === "SIGNED_IN") window.setTimeout(() => { void syncFromSupabase().catch(() => undefined); }, 0);
     });
-    supabase.auth.getSession().then(({ data }) => {
+    void supabase.auth.getSession().then(async ({ data }) => {
+      if (!mounted) return;
       setAuthed(!!data.session);
-      if (data.session) syncFromSupabase();
-      setChecking(false);
+      if (data.session && data.session.user.id !== userId) await syncFromSupabase();
+      else if (data.session) void syncFromSupabase().catch(() => undefined);
+      if (mounted) setChecking(false);
+    }).catch(() => {
+      if (mounted) setChecking(false);
     });
-    return () => sub.subscription.unsubscribe();
-  }, [init, syncFromSupabase]);
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [init, syncFromSupabase, userId]);
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, [location.pathname]);
 

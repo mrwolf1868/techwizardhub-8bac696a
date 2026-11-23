@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,20 +21,18 @@ const SERVICE_IMAGES = [virtualNumbers.url, numbersPromo.url, smsPromo.url];
 export type ServiceItem = { id: string; slug: string; name: string; description: string | null };
 
 export const useServices = () => {
-  const [items, setItems] = useState<ServiceItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    let active = true;
-    supabase.from("child_projects").select("id, slug, name, description, sort_order, created_at")
-      .eq("enabled", true).order("sort_order", { ascending: true }).order("created_at", { ascending: true })
-      .then(({ data }) => {
-        if (!active) return;
-        setItems((data || []) as ServiceItem[]);
-        setLoading(false);
-      });
-    return () => { active = false; };
-  }, []);
-  return { items, loading };
+  const { data, isLoading } = useQuery({
+    queryKey: ["service-catalog", "enabled"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("child_projects")
+        .select("id, slug, name, description, sort_order, created_at")
+        .eq("enabled", true).order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data || []) as ServiceItem[];
+    },
+    staleTime: 60_000,
+  });
+  return { items: data ?? [], loading: isLoading };
 };
 
 export const GameGrid = () => {
@@ -58,7 +56,7 @@ export const GameGrid = () => {
 
 export const ServiceGrid = ({ items, loading }: { items: ServiceItem[]; loading: boolean }) => {
   const navigate = useNavigate();
-  if (loading) return <p className="text-sm text-muted-foreground">Loading services…</p>;
+  if (loading) return <div className="service-grid" aria-busy="true" aria-label="Services loading">{[0, 1, 2].map((item) => <div key={item} className="service-skeleton" />)}</div>;
   if (items.length === 0) return <p className="text-sm text-muted-foreground">No services available yet.</p>;
   return (
     <div className="service-grid">

@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserStore } from "@/store/userStore";
 import { applyMove, legalMoves, Move, Side } from "@/lib/draughts";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Copy } from "lucide-react";
 import { toast } from "sonner";
 
-type M = { id: string; game_type: string; stake: number; creator_id: string; opponent_id: string | null; status: string; state: string | null; turn: string | null; winner_id: string | null; house_fee: number };
+type M = { id: string; game_type: string; stake: number; creator_id: string; opponent_id: string | null; invited_user_id: string | null; status: string; state: string | null; turn: string | null; winner_id: string | null; house_fee: number; match_mode: "open" | "friend" | "challenge"; invite_code: string | null };
 const GLYPH: Record<string, string> = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
 
 const GameMatch = () => {
@@ -19,20 +19,31 @@ const GameMatch = () => {
   const [me, setMe] = useState<string | null>(null);
   const [m, setM] = useState<M | null>(null);
   const [sel, setSel] = useState<number | null>(null);
+  const [matchLoading, setMatchLoading] = useState(true);
 
-  const load = async () => {
-    const { data } = await supabase.from("game_matches").select("*").eq("id", id!).maybeSingle();
-    setM(data as M);
-    if (data?.status === "finished") syncFromSupabase();
-  };
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setMe(data.user?.id ?? null));
-    load();
+    let active = true;
+    setMatchLoading(true);
+    const load = async () => {
+      if (!id) {
+        setMatchLoading(false);
+        return;
+      }
+      const { data } = await supabase.from("game_matches").select("*").eq("id", id).maybeSingle();
+      if (!active) return;
+      setM(data as M | null);
+      setMatchLoading(false);
+      if (data?.status === "finished") void syncFromSupabase();
+    };
+    void supabase.auth.getUser().then(({ data }) => {
+      if (active) setMe(data.user?.id ?? null);
+    });
+    void load();
+    if (!id) return () => { active = false; };
     const ch = supabase.channel(`match-${id}-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "game_matches", filter: `id=eq.${id}` }, load).subscribe();
-    return () => { supabase.removeChannel(ch); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+      .on("postgres_changes", { event: "*", schema: "public", table: "game_matches", filter: `id=eq.${id}` }, () => { void load(); }).subscribe();
+    return () => { active = false; void supabase.removeChannel(ch); };
+  }, [id, syncFromSupabase]);
 
   const side: Side = m && me === m.creator_id ? "w" : "b";
   const flip = side === "b";
@@ -42,8 +53,9 @@ const GameMatch = () => {
   const chess = useMemo(() => (m?.game_type === "chess" && m.state ? new Chess(m.state) : null), [m]);
 
   const send = async (state: string, result: string) => {
+    if (!m) return;
     setSel(null);
-    const { error } = await supabase.rpc("game_move", { _id: m!.id, _state: state, _result: result });
+    const { error } = await supabase.rpc("game_move", { _id: m.id, _state: state, _result: result });
     if (error) toast.error(error.message);
   };
 
@@ -70,11 +82,13 @@ const GameMatch = () => {
 
   const resign = async () => {
     if (!confirm(m?.status === "waiting" ? "Cancel and refund your stake? The entry fee is not refunded." : "Quit? Your opponent wins the pot.")) return;
-    const { error } = await supabase.rpc("game_resign", { _id: m!.id });
+    if (!m) return;
+    const { error } = await supabase.rpc("game_resign", { _id: m.id });
     if (error) toast.error(error.message); else syncFromSupabase();
   };
 
-  if (!m) return <AppLayout><p className="text-sm text-muted-foreground">Loading match…</p></AppLayout>;
+  if (matchLoading) return <AppLayout><p className="text-sm text-muted-foreground">Preparing match…</p></AppLayout>;
+  if (!m) return <AppLayout><section className="page-section"><p className="text-sm text-muted-foreground">This match is unavailable or has ended.</p><Button asChild className="mt-4"><Link to="/games">Back to games</Link></Button></section></AppLayout>;
 
   const cells = Array.from({ length: 64 }, (_, k) => (flip ? 63 - k : k));
   const targets = new Set<number>();
@@ -83,7 +97,9 @@ const GameMatch = () => {
     else dMoves.filter((x) => x.from === sel).forEach((x) => targets.add(x.path[x.path.length - 1]));
   }
 
-  const status = m.status === "waiting" ? "Waiting for an opponent to join…"
+  const status = m.status === "waiting"
+    ? m.match_mode === "challenge" ? (m.invited_user_id === me ? "You have a match invitation. Accept it from the lobby." : "Invitation sent — waiting for the player to accept…")
+      : m.match_mode === "friend" ? "Waiting for your friend to join with the code…" : "Waiting for an opponent to join…"
     : m.status === "cancelled" ? "Match cancelled — stake refunded."
     : m.status === "finished" ? (m.winner_id ? (m.winner_id === me ? `You won KSh ${m.stake * 2}! 🎉` : "You lost this match.") : "Draw — stakes refunded.")
     : myTurn ? "Your move" : "Opponent's move…";
@@ -111,7 +127,7 @@ const GameMatch = () => {
               if (p) piece = <span className={`text-3xl leading-none ${p.color === "w" ? "text-[hsl(var(--piece-light))] [text-shadow:0_0_2px_hsl(var(--piece-outline))]" : "text-[hsl(var(--piece-dark))]"}`}>{GLYPH[p.type]}</span>;
             } else if (m.state && m.state[i] !== ".") {
               const p = m.state[i];
-              piece = <span className={`grid h-4/5 w-4/5 place-items-center rounded-full border-2 text-xs font-black ${p.toLowerCase() === "w" ? "border-foreground/40 bg-foreground text-background" : "border-accent bg-accent text-accent-foreground"}`}>{p === p.toUpperCase() ? "♛" : ""}</span>;
+              piece = <span className={`draft-piece ${p.toLowerCase() === "w" ? "piece-light" : "piece-dark"}`}>{p === p.toUpperCase() ? "♛" : ""}</span>;
             }
             return (
               <button key={i} onClick={() => click(i)}
@@ -122,6 +138,15 @@ const GameMatch = () => {
           })}
         </div>
         <p className="mt-2 text-xs text-muted-foreground">You play {side === "w" ? (chess ? "White" : "Light") : (chess ? "Black" : "Dark")}. Tap a piece, then a highlighted square.</p>
+        {m.match_mode === "friend" && m.invite_code && m.creator_id === me && m.status === "waiting" && (
+          <div className="invite-code-display mt-3">
+            <div><small>Friend code</small><strong>{m.invite_code}</strong></div>
+            <Button variant="outline" size="icon" aria-label="Copy friend code" title="Copy friend code"
+              onClick={() => void navigator.clipboard.writeText(m.invite_code ?? "").then(() => toast.success("Code copied"), () => toast.error("Could not copy code"))}>
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
         {(m.status === "waiting" || m.status === "active") && (me === m.creator_id || me === m.opponent_id) && (
           <Button variant="destructive" className="mt-3 w-full" onClick={resign}>{m.status === "waiting" ? "Cancel match" : "Quit match"}</Button>
         )}

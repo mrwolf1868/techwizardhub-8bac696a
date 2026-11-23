@@ -73,9 +73,7 @@ export const useUserStore = create<UserState>()(
         // Do NOT credit coins locally — only a logged-in user will see their balance after sync.
         set({
           initialized: true,
-          coins: 0,
           referralCode: s.referralCode || generateReferralCode(),
-          transactions: [],
         });
       },
 
@@ -142,59 +140,14 @@ export const useUserStore = create<UserState>()(
       acceptTerms: () => set({ agreedToTerms: true }),
       setPhone: (phone) => set({ phoneNumber: phone }),
 
-      addCoins: (amount, type, description) => {
-        const s = get();
-        const newCoins = s.coins + amount;
-        set({
-          coins: newCoins,
-          transactions: [
-            { id: crypto.randomUUID(), type, amount, description, timestamp: Date.now() },
-            ...s.transactions,
-          ].slice(0, 50),
-        });
-        // Persist to Supabase if logged in
-        if (s.userId) {
-          supabase.from("profiles").update({ coins: newCoins }).eq("user_id", s.userId).then();
-          supabase.from("transactions").insert({
-            user_id: s.userId,
-            type,
-            amount,
-            description,
-          }).then();
-        }
+      addCoins: () => { void get().syncFromSupabase(); },
+
+      spendCoins: () => {
+        void get().syncFromSupabase();
+        return false;
       },
 
-      spendCoins: (amount, type, description) => {
-        const s = get();
-        if (s.coins < amount) return false;
-        const newCoins = s.coins - amount;
-        set({
-          coins: newCoins,
-          transactions: [
-            { id: crypto.randomUUID(), type, amount: -amount, description, timestamp: Date.now() },
-            ...s.transactions,
-          ].slice(0, 50),
-        });
-        if (s.userId) {
-          supabase.from("profiles").update({ coins: newCoins }).eq("user_id", s.userId).then();
-          supabase.from("transactions").insert({
-            user_id: s.userId,
-            type,
-            amount: -amount,
-            description,
-          }).then();
-        }
-        return true;
-      },
-
-      recordGame: () => {
-        const s = get();
-        const n = s.gamesPlayed + 1;
-        set({ gamesPlayed: n });
-        if (s.userId) {
-          supabase.from("profiles").update({ games_played: n }).eq("user_id", s.userId).then();
-        }
-      },
+      recordGame: () => { void get().syncFromSupabase(); },
 
       deployBot: (phoneNumber, code) => {
         const s = get();

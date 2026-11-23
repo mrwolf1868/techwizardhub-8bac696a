@@ -6,35 +6,35 @@
 
 @layer base {
   :root {
-    --background: 265 45% 4%; --foreground: 0 0% 98%;
-    --card: 269 37% 8%; --card-foreground: 0 0% 98%;
-    --popover: 269 37% 8%; --popover-foreground: 0 0% 98%;
-    --primary: 274 93% 64%; --primary-foreground: 0 0% 100%; --primary-glow: 274 93% 72%;
-    --secondary: 271 30% 13%; --secondary-foreground: 275 40% 92%;
-    --muted: 271 25% 13%; --muted-foreground: 277 15% 66%;
-    --accent: 275 45% 18%; --accent-foreground: 277 90% 83%;
-    --destructive: 0 85% 69%; --destructive-foreground: 0 0% 100%;
-    --border: 275 31% 22%; --input: 275 31% 25%; --ring: 274 93% 64%;
-    --radius: .5rem; --success: 152 63% 60%; --warning: 40 92% 68%;
-    --brand-pink: 310 82% 64%; --overlay: 265 45% 4%;
-    --coin: 40 92% 68%; --coin-foreground: 265 45% 4%;
-    --win: 152 63% 60%; --lose: 0 85% 69%;
-    --board-light: 37 67% 83%; --board-dark: 28 36% 55%; --piece-light: 42 62% 90%; --piece-dark: 0 0% 10%; --piece-outline: 0 0% 10%;
+    --background: 220 14% 7%; --foreground: 0 0% 96%;
+    --card: 220 12% 10%; --card-foreground: 0 0% 96%;
+    --popover: 220 12% 10%; --popover-foreground: 0 0% 96%;
+    --primary: 165 52% 42%; --primary-foreground: 0 0% 100%; --primary-glow: 165 42% 52%;
+    --secondary: 220 10% 16%; --secondary-foreground: 0 0% 92%;
+    --muted: 220 9% 15%; --muted-foreground: 220 5% 68%;
+    --accent: 165 24% 20%; --accent-foreground: 160 44% 84%;
+    --destructive: 0 68% 56%; --destructive-foreground: 0 0% 100%;
+    --border: 220 9% 23%; --input: 220 8% 25%; --ring: 165 52% 42%;
+    --radius: .5rem; --success: 152 47% 49%; --warning: 40 76% 61%;
+    --brand-pink: 37 71% 56%; --overlay: 220 14% 7%;
+    --coin: 42 76% 61%; --coin-foreground: 220 14% 7%;
+    --win: 152 47% 49%; --lose: 0 68% 56%;
+    --board-light: 37 67% 83%; --board-dark: 28 36% 55%; --piece-light: 43 86% 92%; --piece-dark: 0 0% 0%; --piece-outline: 0 0% 0%;
     --board-selection: 48 100% 60%; --board-target: 48 100% 45%;
     --piece-shadow: 0 2px 3px hsl(var(--background) / .45);
-    --brand-gradient: linear-gradient(115deg, hsl(var(--primary)), hsl(var(--brand-pink)));
+    --brand-gradient: linear-gradient(115deg, hsl(var(--primary)), hsl(var(--primary-glow)));
     --tile-overlay: linear-gradient(90deg, hsl(var(--card)) 5%, hsl(var(--card) / .95) 30%, hsl(var(--card) / .15) 85%);
     --service-overlay: linear-gradient(0deg, hsl(var(--background)) 0%, hsl(var(--background) / .9) 25%, hsl(var(--background) / .05) 90%);
     --gradient-primary: var(--brand-gradient);
-    --gradient-coin: linear-gradient(135deg, hsl(var(--warning)), hsl(28 92% 60%));
-    --gradient-magenta: linear-gradient(135deg, hsl(var(--brand-pink)), hsl(var(--primary)));
+    --gradient-coin: linear-gradient(135deg, hsl(var(--warning)), hsl(34 72% 52%));
+    --gradient-magenta: linear-gradient(135deg, hsl(var(--primary-glow)), hsl(var(--primary)));
     --gradient-card: linear-gradient(160deg, hsl(var(--card)), hsl(var(--background)));
-    --shadow-glow: 0 0 32px hsl(var(--primary) / .3);
-    --shadow-coin: 0 0 24px hsl(var(--warning) / .35);
-    --shadow-magenta: 0 0 32px hsl(var(--brand-pink) / .3);
-    --shadow-card: 0 10px 40px -10px hsl(var(--background) / .8);
+    --shadow-glow: 0 0 22px hsl(var(--primary) / .16);
+    --shadow-coin: 0 0 18px hsl(var(--warning) / .18);
+    --shadow-magenta: 0 0 22px hsl(var(--brand-pink) / .16);
+    --shadow-card: 0 10px 30px -14px hsl(var(--background) / .72);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --sidebar-background: 269 37% 8%; --sidebar-foreground: 0 0% 98%; --sidebar-primary: 274 93% 64%; --sidebar-primary-foreground: 0 0% 100%; --sidebar-accent: 275 45% 18%; --sidebar-accent-foreground: 277 90% 83%; --sidebar-border: 275 31% 22%; --sidebar-ring: 274 93% 64%;
+    --sidebar-background: 220 12% 9%; --sidebar-foreground: 0 0% 96%; --sidebar-primary: 165 52% 42%; --sidebar-primary-foreground: 0 0% 100%; --sidebar-accent: 165 24% 20%; --sidebar-accent-foreground: 160 44% 84%; --sidebar-border: 220 9% 23%; --sidebar-ring: 165 52% 42%;
   }
   * { @apply border-border; letter-spacing: 0; }
   body { @apply bg-background text-foreground; margin: 0; font-family: 'Trebuchet MS', Arial, sans-serif; }
@@ -239,3 +239,27 @@
 .service-tile { cursor:pointer; }
 .lobby-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 0; border-bottom:1px solid hsl(var(--border)); }
 .lobby-row small { display:block; color:hsl(var(--muted-foreground)); font-size:11px; margin-top:4px; }
+
+/* Service catalog and matchmaking controls */
+.service-grid { grid-template-columns:minmax(0,1fr); gap:12px; }
+.service-tile { height:148px; }
+.service-tile>img { right:auto; left:0; width:40%; height:100%; }
+.service-tile:after { background:linear-gradient(90deg,hsl(var(--background)/.05) 12%,hsl(var(--background)/.75) 34%,hsl(var(--background)) 57%); }
+.service-tile>div { top:50%; bottom:auto; left:39%; right:54px; transform:translateY(-50%); padding:0; }
+.service-tile p { display:-webkit-box; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.service-open { right:10px; bottom:50%; transform:translateY(50%); }
+.service-skeleton { height:148px; border:1px solid hsl(var(--border)); border-radius:8px; background:hsl(var(--card)); animation:pulse-glow 2s ease-in-out infinite; }
+.online-players { display:grid; gap:10px; }
+.online-players h3 { display:flex; justify-content:space-between; align-items:center; font-size:14px; }
+.online-players h3 span { color:hsl(var(--muted-foreground)); font-size:12px; font-weight:500; }
+.online-player-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid hsl(var(--border)); }
+.online-player-row>span { display:flex; align-items:center; gap:9px; font-size:13px; }
+.online-player-row i { width:8px; height:8px; border-radius:50%; background:hsl(var(--success)); }
+.mode-picker button[aria-pressed="true"] { background:hsl(var(--primary)); border-color:hsl(var(--primary)); color:hsl(var(--primary-foreground)); }
+@media(max-width:699px) {
+  .service-grid { grid-template-columns:minmax(0,1fr); }
+  .service-tile { height:132px; }
+  .service-tile>div { left:37%; right:48px; }
+  .service-tile h3 { font-size:16px; }
+  .service-tile p { font-size:11px; }
+}

@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { AppLayout, PageSection } from "@/components/AppLayout";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AppLayout, PageSection, formatKsh } from "@/components/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUserStore } from "@/store/userStore";
 import { toast } from "sonner";
-import { Wallet, Smartphone } from "lucide-react";
+import { Wallet, Smartphone, History } from "lucide-react";
 import { z } from "zod";
 import { normalizePhone } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,7 @@ const schema = z.object({
 });
 
 const PRESETS = [70, 150, 350, 700, 1500];
+type WithdrawalRow = { id: string; amount: number; phone: string; status: string; created_at: string };
 
 // Persistent client id (used by callback to map payment → this browser)
 const getClientId = () => {
@@ -35,12 +36,34 @@ const getClientId = () => {
 };
 
 const Buy = () => {
-  const syncFromSupabase = useUserStore((s) => s.syncFromSupabase);
+  const { syncFromSupabase, coins, phoneNumber: profilePhone, userId } = useUserStore();
+  const [tab, setTab] = useState<"deposit" | "withdraw">("deposit");
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState(70);
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [withdrawPhone, setWithdrawPhone] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawBusy, setWithdrawBusy] = useState(false);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
   const pollRef = useRef<number | null>(null);
+
+  const loadWithdrawals = useCallback(async () => {
+    if (!userId) return;
+    const { data } = await supabase.from("wallet_withdrawals")
+      .select("id,amount,phone,status,created_at")
+      .eq("user_id", userId).order("created_at", { ascending: false }).limit(20);
+    setWithdrawals((data || []) as WithdrawalRow[]);
+  }, [userId]);
+
+  useEffect(() => { void loadWithdrawals(); }, [loadWithdrawals]);
+
+  useEffect(() => {
+    if (profilePhone) {
+      setPhone((current) => current || profilePhone);
+      setWithdrawPhone((current) => current || profilePhone);
+    }
+  }, [profilePhone]);
 
   useEffect(() => {
     return () => {
@@ -53,7 +76,8 @@ const Buy = () => {
     if (!parsed.success) {
       return toast.error(parsed.error.errors[0].message);
     }
-    const normalized = normalizePhone(parsed.data.phone)!;
+    const normalized = normalizePhone(parsed.data.phone);
+    if (!normalized) return toast.error("Enter a valid Safaricom number");
     const clientId = getClientId();
 
     setLoading(true);
@@ -111,9 +135,37 @@ const Buy = () => {
     }, 2000);
   };
 
+  const requestWithdrawal = async () => {
+    const normalized = normalizePhone(withdrawPhone);
+    if (!normalized || !/^254[17]\d{8}$/.test(normalized)) return toast.error("Enter a valid Safaricom number");
+    const requestedAmount = Number(withdrawAmount);
+    if (!Number.isInteger(requestedAmount) || requestedAmount < 1) return toast.error("Enter a valid amount");
+    if (requestedAmount > coins) return toast.error("Insufficient balance");
+
+    setWithdrawBusy(true);
+    const { error } = await supabase.rpc("request_wallet_withdrawal", {
+      _amount: requestedAmount,
+      _phone: normalized,
+    });
+    setWithdrawBusy(false);
+    if (error) return toast.error(error.message);
+    setWithdrawAmount("");
+    await Promise.all([syncFromSupabase(), loadWithdrawals()]);
+    toast.success("Withdrawal request sent. Your balance is held until it is paid or rejected.");
+  };
+
   return (
     <AppLayout>
-      <PageSection title="Deposit">
+      <PageSection title={tab === "deposit" ? "Deposit" : "Withdraw"}>
+      <div className="mb-4 flex gap-2" role="tablist" aria-label="Wallet actions">
+        <Button role="tab" aria-selected={tab === "deposit"} variant={tab === "deposit" ? "default" : "outline"} onClick={() => setTab("deposit")}>
+          Deposit
+        </Button>
+        <Button role="tab" aria-selected={tab === "withdraw"} variant={tab === "withdraw" ? "default" : "outline"} onClick={() => setTab("withdraw")}>
+          Withdraw
+        </Button>
+      </div>
+      {tab === "deposit" ? <>
       <p className="text-sm text-muted-foreground">Top up your Balance with M-Pesa · KSh 1 = 1 coin</p>
 
       <Card className="mt-4 max-w-xl border-coin/30 bg-gradient-card p-5 shadow-card">
@@ -201,6 +253,45 @@ const Buy = () => {
           🔒 Secure payment via Safaricom Daraja. Coins are credited automatically once your payment is confirmed.
         </p>
       </Card>
+      </> : <>
+        <p className="text-sm text-muted-foreground">Request an M-Pesa payout from your available balance.</p>
+        <div className="wallet-layout mt-4">
+          <Card className="max-w-xl border-border bg-card p-5">
+            <div className="flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-lg bg-muted">
+                <Smartphone className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <div className="font-display text-lg font-bold">M-Pesa withdrawal</div>
+                <div className="text-xs text-muted-foreground">Available balance: {coins.toLocaleString()} coins</div>
+              </div>
+            </div>
+            <Label htmlFor="withdraw-phone" className="mt-5 block text-xs uppercase tracking-widest text-muted-foreground">Safaricom number</Label>
+            <Input id="withdraw-phone" inputMode="tel" placeholder="0712345678 or 254712345678" value={withdrawPhone}
+              onChange={(event) => setWithdrawPhone(event.target.value)} maxLength={18} className="mt-2" disabled={withdrawBusy} />
+            <Label htmlFor="withdraw-amount" className="mt-4 block text-xs uppercase tracking-widest text-muted-foreground">Amount (KSh)</Label>
+            <Input id="withdraw-amount" type="number" min={1} max={coins} value={withdrawAmount}
+              onChange={(event) => setWithdrawAmount(event.target.value)} className="mt-2" disabled={withdrawBusy} />
+            <Button className="mt-4 w-full" onClick={requestWithdrawal} disabled={withdrawBusy || coins < 1}>
+              {withdrawBusy ? "Submitting request…" : "Request withdrawal"}
+            </Button>
+            <p className="mt-3 text-xs text-muted-foreground">Requests are reviewed by the team. Coins are deducted now and returned automatically if a request is rejected. Payouts are sent manually.</p>
+          </Card>
+          <div className="transaction-history">
+            <h2>Withdrawal history</h2>
+            {withdrawals.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">No withdrawal requests yet.</p> : withdrawals.map((withdrawal) => (
+              <div key={withdrawal.id} className="transaction-row">
+                <div className="transaction-icon"><History /></div>
+                <div className="flex-1">
+                  <strong>{formatKsh(withdrawal.amount)} to +{withdrawal.phone}</strong>
+                  <small>{new Date(withdrawal.created_at).toLocaleString()}</small>
+                </div>
+                <strong className="capitalize text-muted-foreground">{withdrawal.status}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>}
       </PageSection>
     </AppLayout>
   );

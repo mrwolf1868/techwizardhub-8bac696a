@@ -41,6 +41,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { normalizePhone } from "@/lib/phone";
+import { canWithdrawProfit } from "@/lib/matchFees";
 
 type Profile = {
   user_id: string;
@@ -72,6 +74,8 @@ type Match = {
   status: string;
   creator_id: string;
   opponent_id: string | null;
+  invited_user_id: string | null;
+  match_mode: "open" | "friend" | "challenge";
   winner_id: string | null;
   house_fee: number;
   created_at: string;
@@ -79,6 +83,9 @@ type Match = {
 };
 
 type FeeTx = { amount: number; created_at: string };
+type ProfitSummary = { total_fees: number; total_withdrawn: number; available: number };
+type WalletWithdrawal = { id: string; user_id: string; phone: string; amount: number; status: string; created_at: string; processed_at: string | null };
+type ProfitWithdrawal = { id: string; created_by: string; phone: string; amount: number; created_at: string };
 
 type MpesaTx = {
   id: string;
@@ -96,6 +103,7 @@ type Section =
   | "messages"
   | "activity"
   | "payments"
+  | "withdrawals"
   | "services"
   | "settings";
 
@@ -109,22 +117,38 @@ const Admin = () => {
   const [fees, setFees] = useState<FeeTx[]>([]);
   const [activity, setActivity] = useState<ActivityLog[]>([]);
   const [mpesa, setMpesa] = useState<MpesaTx[]>([]);
+  const [walletWithdrawals, setWalletWithdrawals] = useState<WalletWithdrawal[]>([]);
+  const [profitWithdrawals, setProfitWithdrawals] = useState<ProfitWithdrawal[]>([]);
+  const [profitSummary, setProfitSummary] = useState<ProfitSummary>({ total_fees: 0, total_withdrawn: 0, available: 0 });
   const [settings, setSettings] = useState<Record<string, unknown>>({});
 
   const load = async () => {
-    const [{ data: p }, { data: gm }, { data: fx }, { data: al }, { data: m }, { data: s }] = await Promise.all([
+    const [{ data: p }, { data: gm }, { data: fx }, { data: al }, { data: m }, { data: s }, { data: wr }, { data: profit }, { data: pw }] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("game_matches").select("id, game_type, stake, status, creator_id, opponent_id, winner_id, house_fee, created_at, updated_at").order("created_at", { ascending: false }).limit(500),
+      supabase.from("game_matches").select("id, game_type, stake, status, creator_id, opponent_id, invited_user_id, match_mode, winner_id, house_fee, created_at, updated_at").order("created_at", { ascending: false }).limit(500),
       supabase.from("transactions").select("amount, created_at").eq("type", "house_fee").order("created_at", { ascending: false }).limit(5000),
       supabase.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("mpesa_transactions").select("id, phone, amount, status, mpesa_receipt, created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("admin_settings").select("key, value"),
+      supabase.from("wallet_withdrawals").select("id,user_id,phone,amount,status,created_at,processed_at").order("created_at", { ascending: false }).limit(200),
+      supabase.rpc("admin_get_profit_summary"),
+      supabase.from("admin_profit_withdrawals").select("id,created_by,phone,amount,created_at").order("created_at", { ascending: false }).limit(100),
     ]);
     setProfiles((p || []) as Profile[]);
     setMatches((gm || []) as Match[]);
     setFees((fx || []) as FeeTx[]);
     setActivity((al || []) as ActivityLog[]);
     setMpesa((m || []) as MpesaTx[]);
+    setWalletWithdrawals((wr || []) as WalletWithdrawal[]);
+    setProfitWithdrawals((pw || []) as ProfitWithdrawal[]);
+    const currentProfit = profit?.[0];
+    if (currentProfit) {
+      setProfitSummary({
+        total_fees: Number(currentProfit.total_fees) || 0,
+        total_withdrawn: Number(currentProfit.total_withdrawn) || 0,
+        available: Number(currentProfit.available) || 0,
+      });
+    }
     const sObj: Record<string, unknown> = {};
     (s || []).forEach((row: { key: string; value: unknown }) => { sObj[row.key] = row.value; });
     setSettings(sObj);
@@ -135,7 +159,7 @@ const Admin = () => {
     load();
 
     const channel = supabase
-      .channel("admin-realtime")
+      .channel(`admin-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "game_matches" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "activity_logs" }, () => load())
@@ -160,6 +184,7 @@ const Admin = () => {
     { key: "messages", label: "Messages", icon: Send },
     { key: "activity", label: "Activity", icon: ActivityIcon },
     { key: "payments", label: "Payments", icon: CheckCircle2 },
+    { key: "withdrawals", label: "Withdrawals", icon: Wallet },
     { key: "services", label: "Services", icon: Rocket },
     { key: "settings", label: "Settings", icon: SettingsIcon },
   ];
@@ -243,7 +268,7 @@ const Admin = () => {
 
         <div className="p-4">
           {section === "dashboard" && (
-            <Dashboard profiles={profiles} matches={matches} fees={fees} mpesa={mpesa} activity={activity} />
+            <Dashboard profiles={profiles} matches={matches} fees={fees} mpesa={mpesa} activity={activity} profitSummary={profitSummary} />
           )}
           {section === "matches" && <MatchesPanel matches={matches} profiles={profiles} onChange={load} />}
           {section === "users" && (
@@ -252,6 +277,7 @@ const Admin = () => {
           {section === "messages" && <MessagesPanel profiles={profiles} />}
           {section === "activity" && <ActivityPanel logs={activity} profiles={profiles} />}
           {section === "payments" && <PaymentsPanel mpesa={mpesa} />}
+          {section === "withdrawals" && <WithdrawalsPanel requests={walletWithdrawals} profitWithdrawals={profitWithdrawals} profitSummary={profitSummary} profiles={profiles} onChange={load} />}
           {section === "services" && <ServicesPanel />}
           {section === "settings" && <SettingsPanel settings={settings} onSaved={load} />}
         </div>
@@ -265,9 +291,9 @@ const DAY = 86400000;
 const ksh = (n: number) => `KSh ${n.toLocaleString()}`;
 
 const Dashboard = ({
-  profiles, matches, fees, mpesa, activity,
+  profiles, matches, fees, mpesa, activity, profitSummary,
 }: {
-  profiles: Profile[]; matches: Match[]; fees: FeeTx[]; mpesa: MpesaTx[]; activity: ActivityLog[];
+  profiles: Profile[]; matches: Match[]; fees: FeeTx[]; mpesa: MpesaTx[]; activity: ActivityLog[]; profitSummary: ProfitSummary;
 }) => {
   const now = Date.now();
   const sum = (xs: { amount: number }[]) => xs.reduce((t, x) => t + (x.amount || 0), 0);
@@ -299,6 +325,7 @@ const Dashboard = ({
         <StatCard label="Live matches" value={liveMatches} icon={Swords} tone="win" />
         <StatCard label="Waiting matches" value={waitingMatches} icon={Swords} tone="coin" />
         <StatCard label="Coins in play" value={ksh(staked)} icon={Wallet} tone="primary" />
+        <StatCard label="Profit available" value={ksh(profitSummary.available)} icon={Wallet} tone="coin" />
         <StatCard label="Events (24h)" value={activity.filter((a) => now - new Date(a.created_at).getTime() < DAY).length} icon={ActivityIcon} tone="coin" />
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -358,8 +385,8 @@ const MatchesPanel = ({ matches, profiles, onChange }: { matches: Match[]; profi
   };
 
   const exportCsv = () => {
-    const header = "game,status,stake,fees,creator,opponent,winner,created_at\n";
-    const body = rows.map((m) => [m.game_type, m.status, m.stake, m.house_fee, phone(m.creator_id), phone(m.opponent_id), phone(m.winner_id), m.created_at].join(",")).join("\n");
+    const header = "game,status,stake,fees,creator,opponent_or_invited_player,winner,created_at\n";
+    const body = rows.map((m) => [m.game_type, m.status, m.stake, m.house_fee, phone(m.creator_id), phone(m.opponent_id || m.invited_user_id), phone(m.winner_id), m.created_at].join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([header + body], { type: "text/csv" }));
     const a = document.createElement("a"); a.href = url; a.download = `matches-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
   };
@@ -389,10 +416,10 @@ const MatchesPanel = ({ matches, profiles, onChange }: { matches: Match[]; profi
             {rows.map((m) => (
               <TableRow key={m.id}>
                 <TableCell className="text-xs font-bold">{m.game_type === "draughts" ? "Draft" : "Chess"}</TableCell>
-                <TableCell className="text-xs capitalize">{m.status}</TableCell>
+                <TableCell className="text-xs capitalize">{m.status}{m.status === "waiting" && m.match_mode !== "open" ? ` · ${m.match_mode === "challenge" ? "invited" : "private"}` : ""}</TableCell>
                 <TableCell className="text-xs">{ksh(m.stake)}</TableCell>
                 <TableCell className="text-xs">{ksh(m.house_fee)}</TableCell>
-                <TableCell className="font-mono text-[11px]">{phone(m.creator_id)}<br />{phone(m.opponent_id)}</TableCell>
+                <TableCell className="font-mono text-[11px]">{phone(m.creator_id)}<br />{phone(m.opponent_id || m.invited_user_id)}</TableCell>
                 <TableCell className="font-mono text-[11px]">{phone(m.winner_id)}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleString()}</TableCell>
                 <TableCell>
@@ -440,27 +467,16 @@ const UsersPanel = ({ profiles, onChange }: { profiles: Profile[]; onChange: () 
   const adjustCoins = async (uid: string, delta: number) => {
     const row = profiles.find((x) => x.user_id === uid);
     if (!row) return;
-    const newCoins = Math.max(0, row.coins + delta);
-    const { error } = await supabase.from("profiles").update({ coins: newCoins }).eq("user_id", uid);
+    const { error } = await supabase.rpc("admin_adjust_user_coins", { _user_id: uid, _delta: delta });
     if (error) return toast.error(error.message);
-    await supabase.from("transactions").insert({
-      user_id: uid, type: delta > 0 ? "purchase" : "game_loss",
-      amount: delta, description: `Admin adjustment (${delta > 0 ? "+" : ""}${delta})`,
-    });
     toast.success("Coins updated");
     onChange();
   };
 
   const toggleBan = async (p: Profile) => {
     const banned = !p.banned;
-    const { error } = await supabase.from("profiles").update({
-      banned, banned_at: banned ? new Date().toISOString() : null,
-    }).eq("user_id", p.user_id);
+    const { error } = await supabase.rpc("admin_set_user_banned", { _user_id: p.user_id, _banned: banned });
     if (error) return toast.error(error.message);
-    await supabase.from("activity_logs").insert({
-      user_id: p.user_id, event: banned ? "ban" : "unban",
-      detail: `${banned ? "Banned" : "Unbanned"} ${p.phone}`,
-    });
     toast.success(banned ? "User banned" : "User unbanned");
     onChange();
   };
@@ -610,6 +626,124 @@ const PaymentsPanel = ({ mpesa }: { mpesa: MpesaTx[] }) => (
     </div>
   </Card>
 );
+
+/* ---------- Wallet and fee withdrawals ---------- */
+const WithdrawalsPanel = ({
+  requests, profitWithdrawals, profitSummary, profiles, onChange,
+}: {
+  requests: WalletWithdrawal[];
+  profitWithdrawals: ProfitWithdrawal[];
+  profitSummary: ProfitSummary;
+  profiles: Profile[];
+  onChange: () => Promise<void>;
+}) => {
+  const adminPhone = useUserStore((state) => state.phoneNumber);
+  const [amount, setAmount] = useState("");
+  const [phone, setPhone] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [savingProfit, setSavingProfit] = useState(false);
+
+  useEffect(() => {
+    if (adminPhone) setPhone((current) => current || adminPhone);
+  }, [adminPhone]);
+
+  const recordProfitWithdrawal = async () => {
+    const requested = Number(amount);
+    const normalized = normalizePhone(phone);
+    if (!canWithdrawProfit(requested, profitSummary.available)) return toast.error("Enter an amount within the available profit");
+    if (!normalized || !/^254[17]\d{8}$/.test(normalized)) return toast.error("Enter a valid Safaricom number");
+    setSavingProfit(true);
+    const { error } = await supabase.rpc("admin_record_profit_withdrawal", { _amount: requested, _phone: normalized });
+    setSavingProfit(false);
+    if (error) return toast.error(error.message);
+    setAmount("");
+    toast.success("Profit withdrawal recorded");
+    await onChange();
+  };
+
+  const resolveRequest = async (request: WalletWithdrawal, status: "paid" | "rejected") => {
+    if (status === "paid" && !confirm("Confirm that you have already sent this M-Pesa payout?")) return;
+    setBusyId(request.id);
+    const { error } = await supabase.rpc("admin_resolve_wallet_withdrawal", { _id: request.id, _status: status });
+    setBusyId(null);
+    if (error) return toast.error(error.message);
+    toast.success(status === "paid" ? "Withdrawal marked paid" : "Request rejected and balance returned");
+    await onChange();
+  };
+
+  const profilePhone = (userId: string) => profiles.find((profile) => profile.user_id === userId)?.phone || userId.slice(0, 8);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatCard label="Fees earned" value={ksh(profitSummary.total_fees)} icon={TrendingUp} tone="win" />
+        <StatCard label="Withdrawn" value={ksh(profitSummary.total_withdrawn)} icon={Wallet} tone="primary" />
+        <StatCard label="Available profit" value={ksh(profitSummary.available)} icon={Wallet} tone="coin" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="bg-gradient-card p-4">
+          <h2 className="font-display text-sm font-bold">Record completed profit withdrawal</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Send the M-Pesa payout first. Recording it reduces the available fees and the admin balance.</p>
+          <div className="mt-4 grid gap-3">
+            <div>
+              <label htmlFor="profit-phone" className="text-xs text-muted-foreground">M-Pesa number</label>
+              <Input id="profit-phone" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0712345678" className="mt-1" />
+            </div>
+            <div>
+              <label htmlFor="profit-amount" className="text-xs text-muted-foreground">Amount (KSh)</label>
+              <Input id="profit-amount" type="number" min={1} max={profitSummary.available} value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-1" />
+            </div>
+            <Button disabled={savingProfit || profitSummary.available < 1} onClick={recordProfitWithdrawal}>
+              {savingProfit ? "Recording…" : "Record withdrawal"}
+            </Button>
+          </div>
+          {profitWithdrawals.length > 0 && (
+            <div className="mt-5 overflow-auto">
+              <h3 className="mb-2 text-xs font-bold uppercase text-muted-foreground">Recent withdrawals</h3>
+              <Table>
+                <TableHeader><TableRow><TableHead>Amount</TableHead><TableHead>Number</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+                <TableBody>{profitWithdrawals.slice(0, 10).map((withdrawal) => (
+                  <TableRow key={withdrawal.id}>
+                    <TableCell>{ksh(withdrawal.amount)}</TableCell>
+                    <TableCell className="font-mono text-xs">{withdrawal.phone}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{new Date(withdrawal.created_at).toLocaleDateString()}</TableCell>
+                  </TableRow>
+                ))}</TableBody>
+              </Table>
+            </div>
+          )}
+        </Card>
+
+        <Card className="bg-gradient-card p-4">
+          <h2 className="font-display text-sm font-bold">Player withdrawal requests</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Send payouts manually, then mark them paid. Rejected requests return coins automatically.</p>
+          <div className="mt-3 max-h-[520px] overflow-auto">
+            <Table>
+              <TableHeader><TableRow><TableHead>Player</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {requests.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground">No withdrawal requests</TableCell></TableRow>}
+                {requests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell className="text-xs"><span className="block font-mono">{profilePhone(request.user_id)}</span><span className="text-muted-foreground">to +{request.phone}</span></TableCell>
+                    <TableCell>{ksh(request.amount)}</TableCell>
+                    <TableCell className="capitalize">{request.status}</TableCell>
+                    <TableCell>
+                      {request.status === "pending" ? <div className="flex gap-1">
+                        <Button size="sm" disabled={busyId === request.id} onClick={() => resolveRequest(request, "paid")}>Mark paid</Button>
+                        <Button size="sm" variant="outline" disabled={busyId === request.id} onClick={() => resolveRequest(request, "rejected")}>Reject</Button>
+                      </div> : <span className="text-xs text-muted-foreground">{request.processed_at ? new Date(request.processed_at).toLocaleDateString() : "—"}</span>}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
 
 /* ---------- Settings ---------- */
 const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown>; onSaved: () => void }) => {

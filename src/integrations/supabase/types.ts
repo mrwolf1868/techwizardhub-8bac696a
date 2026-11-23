@@ -41,6 +41,30 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_profit_withdrawals: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          id: string
+          phone: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by: string
+          id?: string
+          phone: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          phone?: string
+        }
+        Relationships: []
+      }
       admin_settings: {
         Row: {
           key: string
@@ -159,6 +183,9 @@ export type Database = {
           game_type: string
           house_fee: number
           id: string
+          invite_code: string | null
+          invited_user_id: string | null
+          match_mode: string
           opponent_id: string | null
           stake: number
           state: string | null
@@ -173,6 +200,9 @@ export type Database = {
           game_type: string
           house_fee?: number
           id?: string
+          invite_code?: string | null
+          invited_user_id?: string | null
+          match_mode?: string
           opponent_id?: string | null
           stake: number
           state?: string | null
@@ -187,6 +217,9 @@ export type Database = {
           game_type?: string
           house_fee?: number
           id?: string
+          invite_code?: string | null
+          invited_user_id?: string | null
+          match_mode?: string
           opponent_id?: string | null
           stake?: number
           state?: string | null
@@ -589,12 +622,69 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_withdrawals: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          phone: string
+          processed_at: string | null
+          processed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          phone: string
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          phone?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      admin_adjust_user_coins: {
+        Args: { _delta: number; _user_id: string }
+        Returns: undefined
+      }
       admin_cancel_match: { Args: { _id: string }; Returns: undefined }
+      admin_get_profit_summary: {
+        Args: never
+        Returns: {
+          available: number
+          total_fees: number
+          total_withdrawn: number
+        }[]
+      }
+      admin_record_profit_withdrawal: {
+        Args: { _amount: number; _phone: string }
+        Returns: string
+      }
+      admin_resolve_wallet_withdrawal: {
+        Args: { _id: string; _status: string }
+        Returns: undefined
+      }
+      admin_set_user_banned: {
+        Args: { _banned: boolean; _user_id: string }
+        Returns: undefined
+      }
       game_charge_entry: {
         Args: { _game: string; _stake: number; _uid: string }
         Returns: undefined
@@ -603,8 +693,20 @@ export type Database = {
         Args: { _game: string; _stake: number; _state: string }
         Returns: string
       }
+      game_create_match_with_mode: {
+        Args: {
+          _game: string
+          _invite_code?: string
+          _match_mode: string
+          _opponent_id?: string
+          _stake: number
+          _state: string
+        }
+        Returns: string
+      }
       game_entry_fee: { Args: { _stake: number }; Returns: number }
       game_join_match: { Args: { _id: string }; Returns: undefined }
+      game_join_match_by_code: { Args: { _code: string }; Returns: string }
       game_move: {
         Args: { _id: string; _result: string; _state: string }
         Returns: undefined
@@ -620,6 +722,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      request_wallet_withdrawal: {
+        Args: { _amount: number; _phone: string }
+        Returns: string
       }
     }
     Enums: {
