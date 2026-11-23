@@ -775,6 +775,59 @@ const WithdrawalsPanel = ({
   );
 };
 
+/* ---------- Withdrawal (B2C) keys ---------- */
+const B2C_FIELDS = [
+  { key: "mpesa_b2c_consumer_key", label: "Consumer Key", secret: false },
+  { key: "mpesa_b2c_consumer_secret", label: "Consumer Secret", secret: true },
+  { key: "mpesa_b2c_shortcode", label: "B2C Shortcode (paybill that sends money)", secret: false },
+  { key: "mpesa_b2c_initiator_name", label: "Initiator Username", secret: false },
+  { key: "mpesa_b2c_security_credential", label: "Security Credential (encrypted initiator password)", secret: true },
+] as const;
+
+const PayoutKeysCard = ({ settings, onSaved }: { settings: Record<string, unknown>; onSaved: () => void }) => {
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [env, setEnv] = useState<"sandbox" | "production">("sandbox");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    const v: Record<string, string> = {};
+    B2C_FIELDS.forEach((f) => { const x = settings[f.key]; v[f.key] = typeof x === "string" ? x : ""; });
+    setVals(v);
+    setEnv(settings.mpesa_b2c_env === "production" ? "production" : "sandbox");
+  }, [settings]);
+  const save = async () => {
+    if (B2C_FIELDS.some((f) => !vals[f.key]?.trim())) return toast.error("Fill in all withdrawal keys");
+    setSaving(true);
+    const now = new Date().toISOString();
+    const rows = [...B2C_FIELDS.map((f) => ({ key: f.key, value: vals[f.key].trim() as never, updated_at: now })), { key: "mpesa_b2c_env", value: env as never, updated_at: now }];
+    const { error } = await supabase.from("admin_settings").upsert(rows);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    await supabase.from("activity_logs").insert({ event: "setting_change", detail: `M-Pesa withdrawal keys updated (env: ${env})` });
+    toast.success("Withdrawal keys saved");
+    onSaved();
+  };
+  return (
+    <Card className="bg-gradient-card p-4">
+      <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">M-Pesa withdrawal (B2C) keys</h3>
+      <p className="mt-1 text-xs text-muted-foreground">Used only for sending money to players and your profit withdrawals. Deposit settings below are not affected. Only admins can see these.</p>
+      <div className="mt-4 grid gap-3">
+        <div className="flex w-fit gap-1 rounded-lg border border-border/60 p-1">
+          {(["sandbox", "production"] as const).map((e) => (
+            <button key={e} type="button" onClick={() => setEnv(e)} className={`rounded-md px-3 py-1 text-xs capitalize ${env === e ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{e}</button>
+          ))}
+        </div>
+        {B2C_FIELDS.map((f) => (
+          <div key={f.key}>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">{f.label}</label>
+            <Input type={f.secret ? "password" : "text"} value={vals[f.key] ?? ""} onChange={(e) => setVals((v) => ({ ...v, [f.key]: e.target.value }))} className="mt-1 font-mono" />
+          </div>
+        ))}
+        <Button onClick={save} disabled={saving} className="w-fit">{saving ? "Saving…" : "Save withdrawal keys"}</Button>
+      </div>
+    </Card>
+  );
+};
+
 /* ---------- Settings ---------- */
 const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown>; onSaved: () => void }) => {
   const [shortcode, setShortcode] = useState("");
@@ -839,6 +892,7 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
 
   return (
     <div className="space-y-4">
+      <PayoutKeysCard settings={settings} onSaved={onSaved} />
       <Card className="bg-gradient-card p-4">
         <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
           M-Pesa BuyGoods (STK push) credentials

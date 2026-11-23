@@ -11,27 +11,29 @@ export type PayoutConfig = {
 
 const HOSTS = { sandbox: "https://sandbox.safaricom.co.ke", production: "https://api.safaricom.co.ke" };
 
-/** Reads payout credentials from secure runtime secrets only. Returns null when anything is missing. */
+/** Reads payout credentials from admin-only settings, falling back to secure secrets. Returns null when anything is missing. */
 export async function loadPayoutConfig(admin: any): Promise<PayoutConfig | null> {
   let env: "sandbox" | "production" = Deno.env.get("MPESA_ENV") === "production" ? "production" : "sandbox";
   let fallbackKey = Deno.env.get("MPESA_CONSUMER_KEY") ?? "";
   let fallbackSecret = Deno.env.get("MPESA_CONSUMER_SECRET") ?? "";
+  const b2c: Record<string, string> = {};
   try {
-    const { data } = await admin.from("admin_settings").select("key,value").in("key", ["mpesa_env", "mpesa_consumer_key", "mpesa_consumer_secret"]);
+    const { data } = await admin.from("admin_settings").select("key,value").or("key.in.(mpesa_env,mpesa_consumer_key,mpesa_consumer_secret),key.like.mpesa_b2c_%");
     for (const row of data ?? []) {
       const v = typeof row.value === "string" ? row.value : String(row.value ?? "");
+      if (row.key.startsWith("mpesa_b2c_") && v) b2c[row.key] = v.trim();
       if (row.key === "mpesa_env" && (v === "production" || v === "sandbox")) env = v;
       if (row.key === "mpesa_consumer_key" && v) fallbackKey = v;
       if (row.key === "mpesa_consumer_secret" && v) fallbackSecret = v;
     }
   } catch (_) { /* use runtime secrets */ }
   const cfg: PayoutConfig = {
-    env: (Deno.env.get("MPESA_B2C_ENV") === "production" ? "production" : Deno.env.get("MPESA_B2C_ENV") === "sandbox" ? "sandbox" : env),
-    consumerKey: Deno.env.get("MPESA_B2C_CONSUMER_KEY") || fallbackKey,
-    consumerSecret: Deno.env.get("MPESA_B2C_CONSUMER_SECRET") || fallbackSecret,
-    shortcode: Deno.env.get("MPESA_B2C_SHORTCODE") ?? "",
-    initiatorName: Deno.env.get("MPESA_B2C_INITIATOR_NAME") ?? "",
-    securityCredential: Deno.env.get("MPESA_B2C_SECURITY_CREDENTIAL") ?? "",
+    env: b2c.mpesa_b2c_env === "production" ? "production" : b2c.mpesa_b2c_env === "sandbox" ? "sandbox" : (Deno.env.get("MPESA_B2C_ENV") === "production" ? "production" : Deno.env.get("MPESA_B2C_ENV") === "sandbox" ? "sandbox" : env),
+    consumerKey: b2c.mpesa_b2c_consumer_key || Deno.env.get("MPESA_B2C_CONSUMER_KEY") || fallbackKey,
+    consumerSecret: b2c.mpesa_b2c_consumer_secret || Deno.env.get("MPESA_B2C_CONSUMER_SECRET") || fallbackSecret,
+    shortcode: b2c.mpesa_b2c_shortcode || Deno.env.get("MPESA_B2C_SHORTCODE") || "",
+    initiatorName: b2c.mpesa_b2c_initiator_name || Deno.env.get("MPESA_B2C_INITIATOR_NAME") || "",
+    securityCredential: b2c.mpesa_b2c_security_credential || Deno.env.get("MPESA_B2C_SECURITY_CREDENTIAL") || "",
     callbackToken: Deno.env.get("MPESA_PAYOUT_CALLBACK_TOKEN") ?? "",
   };
   return Object.values(cfg).every((v) => typeof v === "string" && v.length > 0) ? cfg : null;
