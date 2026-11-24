@@ -71,6 +71,13 @@
       "when": 1795492633010,
       "tag": "0009_games_chat_locks_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795493277388,
+      "tag": "0010_close_legacy_match_entry",
+      "breakpoints": true
     }
   ]
 }
