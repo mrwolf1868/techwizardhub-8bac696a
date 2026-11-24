@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { Chess } from "chess.js";
-import { ArrowRight, Copy, UsersRound } from "lucide-react";
+import { ArrowRight, Copy, Lock, UsersRound } from "lucide-react";
 import { AppLayout, PageSection } from "@/components/AppLayout";
-import { GAMES, GameGrid, type GameId } from "@/components/CatalogCards";
+import { GAMES, GameArt, GameGrid } from "@/components/CatalogCards";
+import { GameChat } from "@/components/GameChat";
+import { useAppSettings } from "@/hooks/useAppSettings";
+import { initialGameState, isGameId, type GameId } from "@/lib/games";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserStore } from "@/store/userStore";
-import { initialDraughts } from "@/lib/draughts";
 import { entryCost, entryFee } from "@/lib/matchFees";
 import { toast } from "sonner";
 
@@ -44,6 +45,8 @@ const Lobby = ({ game }: { game: GameId }) => {
   const [friendCode, setFriendCode] = useState<string | null>(null);
   const [codeToJoin, setCodeToJoin] = useState("");
   const [busy, setBusy] = useState(false);
+  const { lockedGames, stakeLimits } = useAppSettings();
+  const locked = lockedGames.includes(game);
 
   const refreshMatches = useCallback(async () => {
     const { data } = await supabase
@@ -61,7 +64,7 @@ const Lobby = ({ game }: { game: GameId }) => {
     void refreshMatches();
     const channel = supabase
       .channel(`lobby-${game}-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "game_matches" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "game_matches", filter: `game_type=eq.${game}` }, () => {
         void refreshMatches();
       })
       .subscribe();
@@ -97,11 +100,12 @@ const Lobby = ({ game }: { game: GameId }) => {
   const amount = Number.parseInt(stake, 10) || 0;
 
   const createMatch = async (matchMode: MatchMode, opponentId?: string) => {
-    if (amount < 1 || amount > 100000) return toast.error("Enter a stake from 1 to 100,000");
+    if (locked) return toast.error("This game is temporarily locked");
+    if (amount < stakeLimits.min || amount > stakeLimits.max) return toast.error(`Enter a stake from KSh ${stakeLimits.min} to KSh ${stakeLimits.max.toLocaleString()}`);
     if (matchMode === "challenge" && !opponentId) return toast.error("Choose an online player first");
 
     const code = matchMode === "friend" ? createFriendCode() : null;
-    const state = game === "chess" ? new Chess().fen() : initialDraughts();
+    const state = initialGameState(game);
     setBusy(true);
     const { data, error } = await supabase.rpc("game_create_match_with_mode", {
       _game: game,
@@ -149,10 +153,11 @@ const Lobby = ({ game }: { game: GameId }) => {
   return (
     <PageSection title={info.title}>
       <div className="match-entry">
-        <img src={info.image} alt={`${info.title} board`} />
+        {info.image ? <img src={info.image} alt={`${info.title} board`} /> : <GameArt game={info} className="entry-art" />}
         <div className="match-entry-copy">
           <span className="eyebrow">{info.tag}</span>
           <h2>Choose how to play</h2>
+          {locked && <p className="locked-note"><Lock className="h-4 w-4" />This game is temporarily locked by the admin. You can still finish matches already in progress.</p>}
           <div className="mode-picker" role="group" aria-label="Choose match mode">
             <Button variant={mode === "open" ? "default" : "outline"} aria-pressed={mode === "open"} onClick={() => setMode("open")}>Find opponent</Button>
             <Button variant={mode === "friend" ? "default" : "outline"} aria-pressed={mode === "friend"} onClick={() => setMode("friend")}>Play with a friend</Button>
@@ -161,16 +166,16 @@ const Lobby = ({ game }: { game: GameId }) => {
 
           <p className="text-sm text-muted-foreground">Choose a stake. Nothing is charged while searching. When an opponent joins, each player pays the stake plus a 5% entry fee, and the winner receives both stakes.</p>
           <label className="field-label" htmlFor="stake">Stake (KSh)</label>
-          <Input id="stake" type="number" min={1} max={100000} value={stake} onChange={(event) => setStake(event.target.value)} className="mt-2 h-12" />
-          <p className="mt-2 text-xs text-muted-foreground">You pay KSh {entryCost(amount)} when the match starts · Winner receives KSh {amount * 2}</p>
+          <Input id="stake" type="number" min={stakeLimits.min} max={stakeLimits.max} value={stake} onChange={(event) => setStake(event.target.value)} className="mt-2 h-12" />
+          <p className="mt-2 text-xs text-muted-foreground">Stake KSh {stakeLimits.min}–{stakeLimits.max.toLocaleString()} · You pay KSh {entryCost(amount)} when the match starts · Winner receives KSh {amount * 2}</p>
 
           {mode === "open" && (
-            <Button className="mt-4" disabled={busy} onClick={() => createMatch("open")}>Search for an opponent<ArrowRight /></Button>
+            <Button className="mt-4" disabled={busy || locked} onClick={() => createMatch("open")}>Search for an opponent<ArrowRight /></Button>
           )}
 
           {mode === "friend" && (
             <div className="friend-mode mt-4">
-              <Button disabled={busy} onClick={() => createMatch("friend")}>Create friend match<UsersRound /></Button>
+              <Button disabled={busy || locked} onClick={() => createMatch("friend")}>Create friend match<UsersRound /></Button>
               {friendCode && (
                 <div className="invite-code-display">
                   <div><small>Friend code</small><strong>{friendCode}</strong></div>
@@ -198,7 +203,7 @@ const Lobby = ({ game }: { game: GameId }) => {
               ) : onlinePlayers.map((playerId) => (
                 <div className="online-player-row" key={playerId}>
                   <span><i aria-hidden="true" /> Player · {playerId.slice(-4).toUpperCase()}</span>
-                  <Button size="sm" disabled={busy} onClick={() => createMatch("challenge", playerId)}>
+                  <Button size="sm" disabled={busy || locked} onClick={() => createMatch("challenge", playerId)}>
                     Invite · KSh {amount}
                   </Button>
                 </div>
@@ -240,13 +245,14 @@ const Lobby = ({ game }: { game: GameId }) => {
         })}
         <p className="mt-3 text-xs text-muted-foreground">Entry fee: {entryFee(amount)} KSh per player · Charged only when an opponent joins.</p>
       </div>
+      <GameChat room={`lobby:${game}`} title={`${info.title} lobby chat`} />
     </PageSection>
   );
 };
 
 const Games = () => {
   const { game } = useParams<{ game?: string }>();
-  if (game && game !== "chess" && game !== "draughts") return <Navigate to="/games" replace />;
+  if (game && !isGameId(game)) return <Navigate to="/games" replace />;
   return (
     <AppLayout>
       {game ? <Lobby game={game as GameId} /> : <PageSection title="Games"><GameGrid /></PageSection>}

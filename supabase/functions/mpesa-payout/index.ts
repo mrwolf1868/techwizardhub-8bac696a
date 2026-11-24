@@ -8,7 +8,7 @@ const json = (body: unknown, status = 200) =>
 
 const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("status") }),
-  z.object({ action: z.literal("wallet"), amount: z.number().int().min(10).max(150000), phone: z.string().regex(/^254[17]\d{8}$/) }),
+  z.object({ action: z.literal("wallet"), amount: z.number().int().min(1).max(150000), phone: z.string().regex(/^254[17]\d{8}$/) }),
   z.object({ action: z.literal("profit"), amount: z.number().int().min(10).max(150000), phone: z.string().regex(/^254[17]\d{8}$/) }),
   z.object({ action: z.literal("send_pending"), withdrawalId: z.string().uuid() }),
 ]);
@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "Please sign in" }, 401);
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
-    if (!parsed.success) return json({ error: "Check the amount (KSh 10 – 150,000) and M-Pesa number" }, 400);
+    if (!parsed.success) return json({ error: "Check the amount and M-Pesa number" }, 400);
     const body = parsed.data;
 
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });

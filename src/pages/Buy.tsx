@@ -10,6 +10,7 @@ import { Wallet, Smartphone, History } from "lucide-react";
 import { z } from "zod";
 import { normalizePhone } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
+import { useAppSettings } from "@/hooks/useAppSettings";
 
 const schema = z.object({
   phone: z
@@ -19,7 +20,7 @@ const schema = z.object({
       const n = normalizePhone(v);
       return n !== null && /^254[17]\d{8}$/.test(n);
     }, "Enter a valid Safaricom number (e.g. 0712345678 or 254712345678)"),
-  amount: z.number().int().min(1, "Min 1 KES").max(70000, "Max 70,000 KES"),
+  amount: z.number().int(),
 });
 
 const PRESETS = [70, 150, 350, 700, 1500];
@@ -48,6 +49,7 @@ const Buy = () => {
   const [withdrawBusy, setWithdrawBusy] = useState(false);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
   const pollRef = useRef<number | null>(null);
+  const { walletLimits: limits } = useAppSettings();
 
   const loadWithdrawals = useCallback(async () => {
     if (!userId) return;
@@ -83,6 +85,8 @@ const Buy = () => {
     if (!parsed.success) {
       return toast.error(parsed.error.errors[0].message);
     }
+    if (amount < limits.min_deposit || amount > limits.max_deposit)
+      return toast.error(`Deposits must be from KSh ${limits.min_deposit} to KSh ${limits.max_deposit.toLocaleString()}`);
     const normalized = normalizePhone(parsed.data.phone);
     if (!normalized) return toast.error("Enter a valid Safaricom number");
     const clientId = getClientId();
@@ -147,9 +151,9 @@ const Buy = () => {
     if (!normalized || !/^254[17]\d{8}$/.test(normalized)) return toast.error("Enter a valid Safaricom number");
     const requestedAmount = Number(withdrawAmount);
     if (!Number.isInteger(requestedAmount) || requestedAmount < 1) return toast.error("Enter a valid amount");
+    if (requestedAmount < limits.min_withdraw) return toast.error(`The minimum withdrawal is KSh ${limits.min_withdraw}`);
+    if (requestedAmount > limits.max_withdraw) return toast.error(`The maximum withdrawal is KSh ${limits.max_withdraw.toLocaleString()}`);
     if (requestedAmount > coins) return toast.error("Insufficient balance");
-
-    if (requestedAmount < 10) return toast.error("The minimum withdrawal is KSh 10");
 
     setWithdrawBusy(true);
     const { data, error } = await supabase.functions.invoke("mpesa-payout", {
@@ -220,15 +224,15 @@ const Buy = () => {
         <Input
           id="amount"
           type="number"
-          min={1}
-          max={70000}
+          min={limits.min_deposit}
+          max={limits.max_deposit}
           value={amount}
           onChange={(e) => setAmount(parseInt(e.target.value) || 0)}
           className="mt-2 bg-background/60 font-display text-lg font-bold"
           disabled={loading}
         />
         <div className="mt-2 flex flex-wrap gap-2">
-          {PRESETS.map((v) => (
+          {PRESETS.filter((v) => v >= limits.min_deposit && v <= limits.max_deposit).map((v) => (
             <Button
               key={v}
               type="button"
@@ -241,6 +245,8 @@ const Buy = () => {
             </Button>
           ))}
         </div>
+
+        <p className="mt-2 text-xs text-muted-foreground">Deposit from KSh {limits.min_deposit.toLocaleString()} to KSh {limits.max_deposit.toLocaleString()}.</p>
 
         <div className="mt-4 rounded-lg border border-coin/30 bg-coin/5 p-3 text-center">
           <div className="text-xs text-muted-foreground">You will receive</div>
@@ -285,8 +291,9 @@ const Buy = () => {
             <Input id="withdraw-phone" inputMode="tel" placeholder="0712345678 or 254712345678" value={withdrawPhone}
               onChange={(event) => setWithdrawPhone(event.target.value)} maxLength={18} className="mt-2" disabled={withdrawBusy} />
             <Label htmlFor="withdraw-amount" className="mt-4 block text-xs uppercase tracking-widest text-muted-foreground">Amount (KSh)</Label>
-            <Input id="withdraw-amount" type="number" min={10} max={coins} value={withdrawAmount}
+            <Input id="withdraw-amount" type="number" min={limits.min_withdraw} max={Math.min(coins, limits.max_withdraw)} value={withdrawAmount}
               onChange={(event) => setWithdrawAmount(event.target.value)} className="mt-2" disabled={withdrawBusy} />
+            <p className="mt-2 text-xs text-muted-foreground">Withdraw from KSh {limits.min_withdraw.toLocaleString()} to KSh {limits.max_withdraw.toLocaleString()}.</p>
             <Button className="mt-4 w-full" onClick={requestWithdrawal} disabled={withdrawBusy || coins < 1}>
               {withdrawBusy ? "Sending to M-Pesa…" : "Withdraw to M-Pesa"}
             </Button>

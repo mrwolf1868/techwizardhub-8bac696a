@@ -6,3 +6,7 @@
 - Charge match entries only when an opponent joins; searches stay free so cancelled or unanswered searches never move money.
 - M-Pesa payouts run through a server payout function that reads B2C keys from admin-only settings (falling back to secure secrets) and refuses before reserving balance when keys are missing; only confirmed provider results mark payouts paid.
 - Store match mode, friend codes, and targeted opponents on the match record, while online presence uses one shared Realtime room.
+- Admin game and wallet rules (locked games, stake limits, deposit/withdraw limits, site announcement) live in non-secret admin_settings rows that players can read; database functions and payment functions enforce the same values, the UI only mirrors them.
+- Game chat uses one table keyed by room ("lobby:<game>" or "match:<id>"); a security-definer room-access check decides who reads and posts, so match chat stays private to the two players and admins.
+- Draw the black parts of game pieces as masked backgrounds and cream parts as vector fills, because phone browsers with forced dark mode invert dark vector fills to white.
+- Simple grid games (Tic-Tac-Toe, Connect Four) reuse the match record: the board is a string of "." / "w" (creator, cream) / "b" (opponent, black), and moves go through the same protected move function.

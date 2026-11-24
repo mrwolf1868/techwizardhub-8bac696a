@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CircleDot, Columns3, Crown, Hash, Lock, type LucideIcon } from "lucide-react";
+import { useAppSettings } from "@/hooks/useAppSettings";
+import { DraughtPiece } from "@/components/GamePieces";
+import type { GameId } from "@/lib/games";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import draftImage from "@/assets/draft-game.jpg.asset.json";
@@ -9,12 +12,32 @@ import virtualNumbers from "@/assets/virtual-numbers.png.asset.json";
 import numbersPromo from "@/assets/numbers-promotion.jpg.asset.json";
 import smsPromo from "@/assets/sms-promotion.png.asset.json";
 
-export type GameId = "draughts" | "chess";
+export type { GameId } from "@/lib/games";
 
-export const GAMES: { id: GameId; title: string; tag: string; image: string; text: string }[] = [
-  { id: "draughts", title: "Draft", tag: "2 PLAYERS", image: draftImage.url, text: "Challenge another player and compete head-to-head in a fast match." },
-  { id: "chess", title: "Chess", tag: "ONLINE CHESS", image: chessImage.url, text: "Enter the board, find an opponent and play a competitive game." },
+export type GameInfo = { id: GameId; title: string; tag: string; image?: string; icon: LucideIcon; text: string };
+
+export const GAMES: GameInfo[] = [
+  { id: "draughts", title: "Draft", tag: "2 PLAYERS", image: draftImage.url, icon: CircleDot, text: "Challenge another player and compete head-to-head in a fast match." },
+  { id: "chess", title: "Chess", tag: "ONLINE CHESS", image: chessImage.url, icon: Crown, text: "Enter the board, find an opponent and play a competitive game." },
+  { id: "tictactoe", title: "Tic-Tac-Toe", tag: "QUICK MATCH", icon: Hash, text: "Line up three in a row before your opponent. Matches take about a minute." },
+  { id: "connect4", title: "Connect Four", tag: "STRATEGY", icon: Columns3, text: "Drop discs into the grid and connect four in a line to win the pot." },
 ];
+
+const C4_ART = "......." + "...b..." + "..wbw.." + ".bwwbw.";
+
+/** Board illustration for games without a photo. */
+export const GameArt = ({ game, className = "" }: { game: GameInfo; className?: string }) => {
+  const Icon = game.icon;
+  return (
+    <div className={`game-art game-art-${game.id} ${className}`} aria-hidden="true">
+      {game.id === "tictactoe" ? (
+        <div className="art-ttt">{"wb.bw..bw".split("").map((c, i) => <span key={i}>{c !== "." && <DraughtPiece color={c as "w" | "b"} king={false} />}</span>)}</div>
+      ) : game.id === "connect4" ? (
+        <div className="art-c4">{C4_ART.split("").map((c, i) => <span key={i}>{c !== "." && <DraughtPiece color={c as "w" | "b"} king={false} />}</span>)}</div>
+      ) : <Icon />}
+    </div>
+  );
+};
 
 const SERVICE_IMAGES = [virtualNumbers.url, numbersPromo.url, smsPromo.url];
 
@@ -37,19 +60,26 @@ export const useServices = () => {
 
 export const GameGrid = () => {
   const navigate = useNavigate();
+  const { lockedGames } = useAppSettings();
   return (
     <div className="game-grid">
-      {GAMES.map((game) => (
-        <article className="game-tile" key={game.id}>
-          <img src={game.image} alt={`${game.title} board`} />
-          <div className="game-copy">
-            <span className="eyebrow">{game.tag}</span>
-            <h3>{game.title}</h3>
-            <p>{game.text}</p>
-            <Button onClick={() => navigate(`/games/${game.id}`)}>Enter Match<ArrowRight /></Button>
-          </div>
-        </article>
-      ))}
+      {GAMES.map((game) => {
+        const locked = lockedGames.includes(game.id);
+        const Icon = game.icon;
+        return (
+          <article className={`game-tile${locked ? " is-locked" : ""}`} key={game.id}>
+            {game.image ? <img src={game.image} alt={`${game.title} board`} /> : <GameArt game={game} className="tile-art" />}
+            <div className="game-copy">
+              <span className="eyebrow game-tag"><Icon className="h-3.5 w-3.5" />{game.tag}</span>
+              <h3>{game.title}</h3>
+              <p>{game.text}</p>
+              {locked
+                ? <Button variant="secondary" disabled><Lock />Temporarily locked</Button>
+                : <Button onClick={() => navigate(`/games/${game.id}`)}>Enter Match<ArrowRight /></Button>}
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 };

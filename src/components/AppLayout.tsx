@@ -6,6 +6,8 @@ import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/integrations/supabase/client";
 import { MessagesInbox } from "./MessagesInbox";
 import { MatchInvites } from "./MatchInvites";
+import { PendingMatchBar } from "./PendingMatchBar";
+import { useAppSettings } from "@/hooks/useAppSettings";
 
 const nav = [
   { to: "/", title: "Home", icon: Home },
@@ -28,6 +30,7 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const [authed, setAuthed] = useState<boolean>(!!userId);
   const location = useLocation();
   const navigate = useNavigate();
+  const { announcement } = useAppSettings();
 
   useEffect(() => {
     let mounted = true;
@@ -80,6 +83,8 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
           </Button>
         </div>
       </header>
+      {announcement.enabled && announcement.text.trim() && <div className="site-announcement" role="note">{announcement.text}</div>}
+      <PendingMatchBar />
       <main className="app-content">{children}</main>
       <nav className="bottom-navigation" aria-label="Main navigation">
         {nav.map((item) => (

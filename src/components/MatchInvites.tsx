@@ -4,10 +4,9 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserStore } from "@/store/userStore";
 import { entryCost } from "@/lib/matchFees";
+import { gameName } from "@/lib/games";
 
 type Row = { id: string; game_type: string; stake: number; creator_id: string; invited_user_id: string | null; status: string; match_mode: string };
-
-const gameName = (game: string) => (game === "chess" ? "Chess" : "Draughts");
 
 /** Notifies every signed-in player while a new match search or a direct challenge is open. */
 export const MatchInvites = () => {
@@ -35,6 +34,7 @@ export const MatchInvites = () => {
           description: `Player ${row.creator_id.slice(-4).toUpperCase()} wants a match with a stake of KSh ${row.stake}. You pay KSh ${entryCost(row.stake)} only if you join.`,
           duration: 30_000,
           action: { label: "Join", onClick: () => void join(row) },
+          cancel: { label: "View", onClick: () => navigate(`/games/match/${row.id}`) },
         });
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "game_matches" }, (payload) => {

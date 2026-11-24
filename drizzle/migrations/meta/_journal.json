@@ -64,6 +64,13 @@
       "when": 1795459315840,
       "tag": "0008_remove_signup_bonus",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795492633010,
+      "tag": "0009_games_chat_locks_limits",
+      "breakpoints": true
     }
   ]
 }

@@ -69,6 +69,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Admin-set deposit limits
+    {
+      const { data: lim } = await supabase.from("admin_settings").select("value").eq("key", "wallet_limits").maybeSingle();
+      const v = (lim?.value ?? {}) as Record<string, unknown>;
+      const minDep = typeof v.min_deposit === "number" ? Math.max(1, Math.floor(v.min_deposit)) : 1;
+      const maxDep = typeof v.max_deposit === "number" ? Math.min(70000, Math.floor(v.max_deposit)) : 70000;
+      if (amt < minDep || amt > maxDep) {
+        return new Response(JSON.stringify({ error: `Deposits must be from KSh ${minDep} to KSh ${maxDep.toLocaleString()}.` }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Load credentials from admin_settings (env as fallback)
     let consumerKey = Deno.env.get("MPESA_CONSUMER_KEY") ?? "";
     let consumerSecret = Deno.env.get("MPESA_CONSUMER_SECRET") ?? "";

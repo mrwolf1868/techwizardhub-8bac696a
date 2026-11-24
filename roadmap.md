@@ -11,4 +11,9 @@
 - [x] Use black-and-cream game pieces, vertical service listings, and less disruptive loading.
 - [x] Verify TypeScript, six focused tests, signed-in screens, and desktop/mobile layouts.
 - [ ] Run a full two-player paid match and payout test — blocked because preview and live app share wallet balances; an isolated test backend is needed.
+- [x] Pending match strip on every page with View and Cancel.
+- [x] Black pieces stay black on phones with forced dark mode.
+- [x] Admin "Back to website" button, Games panel (lock games, stake limits), chat moderation, announcement, deposit/withdraw limits.
+- [x] Live lobby and match chat; View button on match alerts; Tic-Tac-Toe and Connect Four.
+- [ ] Two-player test of the new games and match chat — needs two signed-in players at once.
 - [ ] Set service prices — waiting on the user's list.

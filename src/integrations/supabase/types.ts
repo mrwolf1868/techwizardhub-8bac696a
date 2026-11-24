@@ -194,6 +194,30 @@ export type Database = {
         }
         Relationships: []
       }
+      game_chat_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          room: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          room: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          room?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       game_matches: {
         Row: {
           created_at: string
@@ -718,6 +742,7 @@ export type Database = {
         Args: { _banned: boolean; _user_id: string }
         Returns: undefined
       }
+      can_access_chat_room: { Args: { _room: string }; Returns: boolean }
       game_charge_entry: {
         Args: { _game: string; _stake: number; _uid: string }
         Returns: undefined
@@ -738,6 +763,7 @@ export type Database = {
         Returns: string
       }
       game_entry_fee: { Args: { _stake: number }; Returns: number }
+      game_is_locked: { Args: { _game: string }; Returns: boolean }
       game_join_match: { Args: { _id: string }; Returns: undefined }
       game_join_match_by_code: { Args: { _code: string }; Returns: string }
       game_move: {
@@ -788,6 +814,10 @@ export type Database = {
       request_wallet_withdrawal: {
         Args: { _amount: number; _phone: string }
         Returns: string
+      }
+      setting_int: {
+        Args: { _default: number; _field: string; _key: string }
+        Returns: number
       }
     }
     Enums: {

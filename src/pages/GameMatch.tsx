@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useBlocker, useNavigate, useParams } from "react-router-dom";
 import { Chess, Square } from "chess.js";
-import { ArrowLeft, Copy, Flag, Search, Trophy } from "lucide-react";
+import { ArrowLeft, Copy, Flag, Search, Trophy, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ChessPiece, DraughtPiece } from "@/components/GamePieces";
+import { GameChat } from "@/components/GameChat";
+import { C4_COLS, c4Drop, gameName, gridOutcome, tttPlay } from "@/lib/games";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserStore } from "@/store/userStore";
 import { applyMove, legalMoves, Move, Side } from "@/lib/draughts";
@@ -28,6 +30,7 @@ const GameMatch = () => {
   const [matchLoading, setMatchLoading] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [joining, setJoining] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -80,6 +83,12 @@ const GameMatch = () => {
 
   const click = (i: number) => {
     if (!myTurn || !m?.state) return;
+    if (m.game_type === "tictactoe" || m.game_type === "connect4") {
+      const next = m.game_type === "tictactoe" ? tttPlay(m.state, i, side) : c4Drop(m.state, i % C4_COLS, side);
+      if (!next) return;
+      void send(next, gridOutcome(m.game_type, next));
+      return;
+    }
     if (chess) {
       const p = chess.get(sqName(i));
       if (p && p.color === side) { setSel(i); return; }
@@ -99,6 +108,16 @@ const GameMatch = () => {
   const stay = () => {
     setConfirmOpen(false);
     if (blocker.state === "blocked") blocker.reset();
+  };
+
+  const joinThis = async () => {
+    if (!m) return;
+    setJoining(true);
+    const { error } = await supabase.rpc("game_join_match", { _id: m.id });
+    setJoining(false);
+    if (error) return toast.error(error.message.includes("not available") ? "Someone else already joined this match" : error.message);
+    await syncFromSupabase();
+    void load();
   };
 
   const confirmLeave = async () => {
@@ -121,7 +140,10 @@ const GameMatch = () => {
   if (matchLoading) return <AppLayout><section className="page-section"><div className="match-card text-sm text-muted-foreground">Loading match…</div></section></AppLayout>;
   if (!m) return <AppLayout><section className="page-section"><p className="text-sm text-muted-foreground">This match is unavailable or has ended.</p><Button asChild className="mt-4"><Link to="/games">Back to games</Link></Button></section></AppLayout>;
 
-  const gameTitle = m.game_type === "chess" ? "Chess" : "Draughts";
+  const gameTitle = gameName(m.game_type);
+  const grid = m.game_type === "tictactoe" || m.game_type === "connect4";
+  const viewing = m.status === "waiting" && !isCreator;
+  const canJoin = viewing && (m.match_mode === "open" || (m.match_mode === "challenge" && m.invited_user_id === me));
   const cells = Array.from({ length: 64 }, (_, k) => (flip ? 63 - k : k));
   const targets = new Set<number>();
   if (sel !== null && myTurn) {
@@ -150,7 +172,19 @@ const GameMatch = () => {
           <ArrowLeft className="h-4 w-4" /> Back to {gameTitle}
         </button>
 
-        {searching ? (
+        {viewing ? (
+          <div className="match-search">
+            <div className="search-animation"><span /><span /><span /><Search /></div>
+            <h2>Player {tag(m.creator_id)} is looking for an opponent</h2>
+            <p>{gameTitle} · Stake KSh {m.stake} · Winner gets KSh {winnerPayout(m.stake)}. You pay KSh {entryCost(m.stake)} (stake + KSh {entryFee(m.stake)} entry fee) only if you join.</p>
+            {canJoin ? (
+              <Button disabled={joining} onClick={() => void joinThis()}><UserPlus />{joining ? "Joining…" : `Join match · KSh ${entryCost(m.stake)}`}</Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">{m.match_mode === "friend" ? "This is a private friend match. Ask the player for the code." : "This invitation is for another player."}</p>
+            )}
+            <Button variant="outline" onClick={() => navigate(`/games/${m.game_type}`)}>Back to lobby</Button>
+          </div>
+        ) : searching ? (
           <div className="match-search">
             <div className="search-animation"><span /><span /><span /><Search /></div>
             <h2>{status}</h2>
@@ -171,10 +205,21 @@ const GameMatch = () => {
           <div className="live-match mt-4">
             <div>
               <div className={`player-strip ${m.status === "active" && m.turn === opponentId ? "is-turn" : ""}`}>
-                <span><i className={`player-swatch ${oppSwatch}`} aria-hidden="true" /><span><strong>Opponent</strong><br /><small>Player {tag(opponentId)}</small></span></span>
+                <span><span className="player-swatch-piece" aria-hidden="true"><DraughtPiece color={oppSwatch === "light" ? "w" : "b"} king={false} /></span><span><strong>Opponent</strong><br /><small>Player {tag(opponentId)}</small></span></span>
                 {m.status === "active" && m.turn === opponentId && <span className="turn-pill">Thinking…</span>}
               </div>
-              <div className="board-frame">
+              <div className={`board-frame ${grid ? `grid-frame ${m.game_type}-frame` : ""}`}>
+                {grid ? (
+                  <div className={m.game_type === "tictactoe" ? "ttt-board" : "c4-board"}>
+                    {(m.state || "").split("").map((c, i) => (
+                      <button key={i} type="button" onClick={() => click(i)} disabled={!myTurn}
+                        aria-label={m.game_type === "tictactoe" ? `Cell ${i + 1}` : `Column ${(i % C4_COLS) + 1}`}
+                        className={`grid-cell ${c === "." && myTurn ? "is-open" : ""}`}>
+                        {c !== "." && <DraughtPiece color={c as "w" | "b"} king={false} />}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
                 <div className="play-board">
                   {cells.map((i) => {
                     const dark = (Math.floor(i / 8) + (i % 8)) % 2 === 1;
@@ -194,9 +239,10 @@ const GameMatch = () => {
                     );
                   })}
                 </div>
+                )}
               </div>
               <div className={`player-strip ${myTurn ? "is-turn" : ""}`}>
-                <span><i className={`player-swatch ${mySwatch}`} aria-hidden="true" /><span><strong>You</strong><br /><small>{side === "w" ? "Cream pieces · moves first" : "Black pieces"}</small></span></span>
+                <span><span className="player-swatch-piece" aria-hidden="true"><DraughtPiece color={mySwatch === "light" ? "w" : "b"} king={false} /></span><span><strong>You</strong><br /><small>{side === "w" ? "Cream · moves first" : "Black"}</small></span></span>
                 {myTurn && <span className="turn-pill">Your move</span>}
               </div>
             </div>
@@ -206,7 +252,7 @@ const GameMatch = () => {
                 <h3>{gameTitle}</h3>
                 <div className={`status-line ${won ? "win" : lost ? "lose" : ""}`}>{won && <Trophy className="h-4 w-4" />}{status}</div>
                 {chess?.inCheck() && m.status === "active" && <p className="mt-2 text-sm font-semibold text-lose">Check</p>}
-                {m.status === "active" && <p className="mt-2 text-xs text-muted-foreground">Tap one of your pieces, then a highlighted square.</p>}
+                {m.status === "active" && <p className="mt-2 text-xs text-muted-foreground">{m.game_type === "tictactoe" ? "Tap an empty square. Three in a row wins." : m.game_type === "connect4" ? "Tap a column to drop your disc. Four in a line wins." : "Tap one of your pieces, then a highlighted square."}</p>}
               </div>
               <div className="match-card">
                 <h3>Stake and prize</h3>
@@ -220,6 +266,7 @@ const GameMatch = () => {
               {playing && (
                 <Button variant="destructive" className="mt-3 w-full" onClick={() => setConfirmOpen(true)}><Flag /> Quit match</Button>
               )}
+              {isPlayer && m.status !== "waiting" && <GameChat room={`match:${m.id}`} title="Match chat" labelFor={() => "Opponent"} />}
               {m.status !== "active" && m.status !== "waiting" && (
                 <Button className="mt-3 w-full" onClick={() => navigate(`/games/${m.game_type}`)}>Play again</Button>
               )}

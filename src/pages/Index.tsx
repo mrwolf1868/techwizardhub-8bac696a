@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AppLayout, formatKsh } from "@/components/AppLayout";
-import { GameGrid, ServiceGrid, useServices } from "@/components/CatalogCards";
+import { GAMES, GameGrid, ServiceGrid, useServices } from "@/components/CatalogCards";
 import { useUserStore } from "@/store/userStore";
 import draftHero from "@/assets/draft-promotion.jpg.asset.json";
 import chessHero from "@/assets/chess-promotion.jpg.asset.json";
@@ -36,8 +36,8 @@ const Index = () => {
       </section>
       <section className="stats-band">
         <div><small>Wallet</small><strong>{formatKsh(coins)}</strong><span>Available balance</span></div>
-        <div><small>Match modes</small><strong>02</strong><span>Create · Join</span></div>
-        <div><small>Games</small><strong>02</strong><span>Draft + Chess</span></div>
+        <div><small>Match modes</small><strong>03</strong><span>Open · Friend · Challenge</span></div>
+        <div><small>Games</small><strong>{String(GAMES.length).padStart(2, "0")}</strong><span>Chess · Draft · more</span></div>
         <div><small>Services</small><strong>{loading ? "--" : String(items.length).padStart(2, "0")}</strong><span>Explore services</span></div>
       </section>
       <section className="content-section">

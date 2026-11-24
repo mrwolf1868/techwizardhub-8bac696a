@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
+import { AnnouncementCard, ChatModerationPanel, GamesPanel, WalletLimitsCard } from "@/components/admin/GameControls";
 import { useUserStore } from "@/store/userStore";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -27,6 +28,9 @@ import {
   Send,
   Megaphone,
   User as UserIcon,
+  Gamepad2,
+  MessageCircle,
+  ArrowLeft,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -100,6 +104,8 @@ type Section =
   | "dashboard"
   | "users"
   | "matches"
+  | "games"
+  | "chat"
   | "messages"
   | "activity"
   | "payments"
@@ -110,6 +116,7 @@ type Section =
 const Admin = () => {
   const { isAdmin, userId } = useUserStore();
   const [section, setSection] = useState<Section>("dashboard");
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -181,6 +188,8 @@ const Admin = () => {
     { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { key: "users", label: "Users", icon: UsersIcon },
     { key: "matches", label: "Matches", icon: Swords },
+    { key: "games", label: "Games", icon: Gamepad2 },
+    { key: "chat", label: "Game chat", icon: MessageCircle },
     { key: "messages", label: "Messages", icon: Send },
     { key: "activity", label: "Activity", icon: ActivityIcon },
     { key: "payments", label: "Payments", icon: CheckCircle2 },
@@ -259,11 +268,16 @@ const Admin = () => {
                 <path d="M3 6h18M3 12h18M3 18h18" />
               </svg>
             </button>
-            <h1 className="font-display text-lg font-black capitalize">{section}</h1>
+            <h1 className="font-display text-lg font-black">{navItems.find((n) => n.key === section)?.label}</h1>
           </div>
-          <Button variant="ghost" size="sm" onClick={load}>
-            <RefreshCcw className="mr-2 h-4 w-4" /> Refresh
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" onClick={() => navigate("/")}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to website
+            </Button>
+            <Button variant="ghost" size="sm" onClick={load} aria-label="Refresh">
+              <RefreshCcw className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Refresh</span>
+            </Button>
+          </div>
         </header>
 
         <div className="p-4">
@@ -279,6 +293,8 @@ const Admin = () => {
           {section === "payments" && <PaymentsPanel mpesa={mpesa} />}
           {section === "withdrawals" && <WithdrawalsPanel requests={walletWithdrawals} profitWithdrawals={profitWithdrawals} profitSummary={profitSummary} profiles={profiles} onChange={load} />}
           {section === "services" && <ServicesPanel />}
+          {section === "games" && <GamesPanel matches={matches} />}
+          {section === "chat" && <ChatModerationPanel phoneFor={(id) => { const p = profiles.find((x) => x.user_id === id); return p ? `+${p.phone}` : `Player ${id.slice(-4).toUpperCase()}`; }} />}
           {section === "settings" && <SettingsPanel settings={settings} onSaved={load} />}
         </div>
       </main>
@@ -892,6 +908,8 @@ const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown
 
   return (
     <div className="space-y-4">
+      <WalletLimitsCard />
+      <AnnouncementCard />
       <PayoutKeysCard settings={settings} onSaved={onSaved} />
       <Card className="bg-gradient-card p-4">
         <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">

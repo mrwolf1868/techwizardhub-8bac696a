@@ -36,6 +36,7 @@
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --sidebar-background: 220 12% 9%; --sidebar-foreground: 0 0% 96%; --sidebar-primary: 165 52% 42%; --sidebar-primary-foreground: 0 0% 100%; --sidebar-accent: 165 24% 20%; --sidebar-accent-foreground: 160 44% 84%; --sidebar-border: 220 9% 23%; --sidebar-ring: 165 52% 42%;
   }
+  :root { color-scheme: dark; }
   * { @apply border-border; letter-spacing: 0; }
   body { @apply bg-background text-foreground; margin: 0; font-family: 'Trebuchet MS', Arial, sans-serif; }
   .techwolf-app h1 { font-size: 32px; font-weight: 700; margin-bottom: 24px; }
@@ -288,3 +289,71 @@
   .service-tile h3 { font-size:16px; }
   .service-tile p { font-size:11px; }
 }
+
+/* Keep piece colours exact: phone browsers with "force dark" otherwise invert the black pieces to white. */
+.piece-stack { position:relative; display:block; width:86%; height:86%; pointer-events:none; forced-color-adjust:none; filter:drop-shadow(0 2px 1.5px rgb(0 0 0 / .35)); }
+.draught-piece { width:80%; height:80%; }
+.piece-stack>svg, .piece-ink { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+.piece-ink { display:block; background-color:hsl(var(--piece-dark)); -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
+.piece-stack .cream-fill, .piece-stack .cream-fill * { fill:hsl(var(--piece-light)); stroke:none; }
+.piece-stack .cream-outline, .piece-stack .cream-outline * { fill:hsl(var(--piece-light)); stroke:hsl(var(--piece-light)); stroke-width:3; stroke-linejoin:round; stroke-linecap:round; }
+.piece-stack .cream-detail, .piece-stack .cream-detail * { fill:none; stroke:hsl(var(--piece-light)); stroke-width:1.2; stroke-linejoin:round; stroke-linecap:round; }
+.piece-stack .cream-ring { fill:none; stroke:hsl(var(--piece-light) / .55); stroke-width:1.3; }
+.c4-board .draught-piece, .ttt-board .draught-piece { width:82%; height:82%; }
+
+/* Pending match strip and site announcement */
+.site-announcement { background:hsl(var(--accent)); color:hsl(var(--accent-foreground)); font-size:13px; text-align:center; padding:8px 16px; border-bottom:1px solid hsl(var(--border)); }
+.pending-bar { position:sticky; top:56px; z-index:25; background:hsl(var(--card) / .97); border-bottom:1px solid hsl(var(--border)); backdrop-filter:blur(12px); }
+.pending-item { max-width:1100px; margin:auto; display:flex; align-items:center; gap:10px; padding:8px 24px; }
+.pending-item + .pending-item { border-top:1px solid hsl(var(--border)); }
+.pending-text { flex:1; min-width:0; display:flex; flex-direction:column; }
+.pending-text strong { font-size:13px; } .pending-text small { font-size:11px; color:hsl(var(--muted-foreground)); }
+.pending-pulse { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; flex:none; background:hsl(var(--primary) / .18); color:hsl(var(--primary)); animation:pending-pulse 1.8s ease-in-out infinite; }
+@keyframes pending-pulse { 0%,100% { box-shadow:0 0 0 0 hsl(var(--primary) / .35); } 50% { box-shadow:0 0 0 6px hsl(var(--primary) / 0); } }
+@media (max-width:640px) { .pending-bar { top:52px; } .pending-item { padding:8px 12px; gap:8px; } .pending-item button { padding:0 10px; } }
+@media (prefers-reduced-motion: reduce) { .pending-pulse { animation:none; } }
+
+/* Game catalogue art for games without a photo */
+.game-tag { display:inline-flex; align-items:center; gap:6px; }
+.game-art { display:grid; place-items:center; background:radial-gradient(circle at 70% 40%, hsl(var(--board-dark) / .55), hsl(var(--card)) 70%); color:hsl(var(--board-light)); }
+.game-art>svg { width:42%; height:42%; }
+.game-tile>.tile-art { position:absolute; right:0; top:0; width:58%; height:100%; }
+.game-tile.is-locked>img, .game-tile.is-locked>.tile-art { filter:grayscale(1) brightness(.6); }
+.entry-art { width:100%; height:320px; border-radius:8px; }
+.art-ttt { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; width:132px; aspect-ratio:1; background:hsl(var(--board-frame)); padding:5px; border-radius:8px; }
+.art-ttt span, .art-c4 span { border-radius:4px; background:hsl(var(--board-light)); display:grid; place-items:center; }
+.art-c4 { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; width:170px; background:hsl(var(--board-frame)); padding:6px; border-radius:8px; }
+.art-c4 span { aspect-ratio:1; border-radius:50%; background:hsl(var(--board-dark)); }
+.game-art .disc::after { content:''; width:72%; aspect-ratio:1; border-radius:50%; }
+.game-art .disc.w::after { background:hsl(var(--piece-light)); box-shadow:inset 0 0 0 1.5px hsl(var(--piece-dark)); }
+.game-art .disc.b::after { background:hsl(var(--piece-dark)); box-shadow:inset 0 0 0 1.5px hsl(var(--piece-light) / .8); }
+.art-c4 .disc::after { width:86%; }
+.locked-note { display:flex; gap:8px; align-items:flex-start; font-size:13px; padding:10px 12px; border-radius:8px; background:hsl(var(--warning) / .12); color:hsl(var(--warning)); margin:10px 0 0 !important; }
+@media(max-width:699px) { .entry-art { height:230px; } }
+
+/* Tic-Tac-Toe and Connect Four boards */
+.ttt-board { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; aspect-ratio:1; max-width:420px; margin:auto; }
+.c4-board { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.grid-cell { padding:0; border:0; display:grid; place-items:center; aspect-ratio:1; min-width:0; transition:background .15s; }
+.ttt-board .grid-cell { background:hsl(var(--board-light)); border-radius:6px; }
+.c4-board .grid-cell { background:hsl(var(--board-dark)); border-radius:50%; }
+.ttt-board .grid-cell.is-open:hover { background:hsl(var(--board-selection) / .6); }
+.c4-board .grid-cell.is-open:hover { background:hsl(var(--board-dark) / .7); }
+.c4-board .draught-svg { width:90%; height:90%; }
+
+/* Live game chat */
+.game-chat { margin-top:16px; border:1px solid hsl(var(--border)); border-radius:10px; background:hsl(var(--card)); display:flex; flex-direction:column; overflow:hidden; }
+.game-chat header { display:flex; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid hsl(var(--border)); font-size:11px; color:hsl(var(--muted-foreground)); }
+.game-chat header h3 { margin:0; flex:1; font-size:13px; font-weight:700; color:hsl(var(--foreground)); }
+.live-dot { width:7px; height:7px; border-radius:50%; background:hsl(var(--success)); }
+.game-chat ol { list-style:none; margin:0; padding:12px 14px; height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
+.game-chat li { max-width:85%; align-self:flex-start; }
+.game-chat li.mine { align-self:flex-end; text-align:right; }
+.game-chat li small { font-size:10px; color:hsl(var(--muted-foreground)); }
+.game-chat li p { margin:3px 0 0; padding:7px 11px; border-radius:10px; background:hsl(var(--secondary)); font-size:13px; line-height:1.4; word-break:break-word; text-align:left; }
+.game-chat li.mine p { background:hsl(var(--primary) / .22); }
+.game-chat .chat-empty { align-self:center; margin:auto; font-size:12px; color:hsl(var(--muted-foreground)); }
+.game-chat form { display:flex; gap:8px; padding:10px; border-top:1px solid hsl(var(--border)); }
+.player-swatch-piece { width:24px; height:24px; flex:none; display:grid; place-items:center; }
+.player-swatch-piece .draught-piece { width:100%; height:100%; }
+.art-ttt .draught-piece, .art-c4 .draught-piece { width:84%; height:84%; }
