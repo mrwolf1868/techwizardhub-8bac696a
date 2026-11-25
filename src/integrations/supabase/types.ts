@@ -215,6 +215,108 @@ export type Database = {
         }
         Relationships: []
       }
+      coin_candles: {
+        Row: {
+          c: number
+          h: number
+          l: number
+          o: number
+          t: string
+        }
+        Insert: {
+          c: number
+          h: number
+          l: number
+          o: number
+          t: string
+        }
+        Update: {
+          c?: number
+          h?: number
+          l?: number
+          o?: number
+          t?: string
+        }
+        Relationships: []
+      }
+      coin_market_state: {
+        Row: {
+          anchor: number
+          at: string
+          id: number
+          price: number
+          trend: number
+          vol: number
+        }
+        Insert: {
+          anchor: number
+          at: string
+          id?: number
+          price: number
+          trend: number
+          vol: number
+        }
+        Update: {
+          anchor?: number
+          at?: string
+          id?: number
+          price?: number
+          trend?: number
+          vol?: number
+        }
+        Relationships: []
+      }
+      coin_positions: {
+        Row: {
+          close_reason: string | null
+          closed_at: string | null
+          entry: number
+          exit_price: number | null
+          id: string
+          lots: number
+          margin: number
+          opened_at: string
+          pnl: number | null
+          side: string
+          sl: number | null
+          status: string
+          tp: number | null
+          user_id: string
+        }
+        Insert: {
+          close_reason?: string | null
+          closed_at?: string | null
+          entry: number
+          exit_price?: number | null
+          id?: string
+          lots: number
+          margin: number
+          opened_at?: string
+          pnl?: number | null
+          side: string
+          sl?: number | null
+          status?: string
+          tp?: number | null
+          user_id: string
+        }
+        Update: {
+          close_reason?: string | null
+          closed_at?: string | null
+          entry?: number
+          exit_price?: number | null
+          id?: string
+          lots?: number
+          margin?: number
+          opened_at?: string
+          pnl?: number | null
+          side?: string
+          sl?: number | null
+          status?: string
+          tp?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       game_chat_messages: {
         Row: {
           body: string
@@ -807,6 +909,37 @@ export type Database = {
         Returns: undefined
       }
       can_access_chat_room: { Args: { _room: string }; Returns: boolean }
+      coin_check_positions: { Args: never; Returns: undefined }
+      coin_close: { Args: { _id: string }; Returns: undefined }
+      coin_feed: {
+        Args: { _since: string }
+        Returns: {
+          c: number
+          h: number
+          l: number
+          o: number
+          t: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "coin_candles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      coin_open: {
+        Args: { _lots: number; _side: string; _sl: number; _tp: number }
+        Returns: string
+      }
+      coin_set_levels: {
+        Args: { _id: string; _sl: number; _tp: number }
+        Returns: undefined
+      }
+      coin_settle: {
+        Args: { _exit: number; _id: string; _reason: string }
+        Returns: undefined
+      }
+      coin_sync: { Args: never; Returns: undefined }
       game_charge_entry: {
         Args: { _game: string; _stake: number; _uid: string }
         Returns: undefined
@@ -874,6 +1007,12 @@ export type Database = {
       payout_reserve_wallet: {
         Args: { _amount: number; _phone: string; _uid: string }
         Returns: string
+      }
+      quiz_decide: { Args: { _id: string }; Returns: undefined }
+      quiz_finalize: { Args: { _id: string }; Returns: undefined }
+      quiz_submit: {
+        Args: { _answers: number[]; _id: string }
+        Returns: undefined
       }
       request_wallet_withdrawal: {
         Args: { _amount: number; _phone: string }

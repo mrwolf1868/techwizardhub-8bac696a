@@ -92,6 +92,13 @@
       "when": 1795617281797,
       "tag": "0012_profits_to_admin_wallet_usernames",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795617886633,
+      "tag": "0013_math_quiz_and_coin_trade",
+      "breakpoints": true
     }
   ]
 }
