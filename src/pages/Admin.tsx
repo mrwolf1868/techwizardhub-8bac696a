@@ -703,6 +703,7 @@ const WithdrawalsPanel = ({
           const other = data.env === "live" ? "Sandbox" : "Live";
           setPayoutNote(data.otherEnvValid
             ? `Mullahc accepts these keys only in ${other} mode. Switch the mode in Settings to ${other} and save.`
+            : data.swapped ? "The public and secret keys are in each other's boxes. Swap them in Settings and save."
             : "Mullahc rejected the saved keys. Copy the public and secret keys again from your Mullahc Developers page and save them in Settings.");
         }
       }, () => setPayoutReady(false));

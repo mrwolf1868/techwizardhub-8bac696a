@@ -34,11 +34,17 @@ const errMsg = (data: any, fallback: string) =>
   Array.isArray(data?.message) ? data.message.join(", ") : (typeof data?.message === "string" && data.message) || fallback;
 
 async function getToken(cfg: MullahcConfig) {
-  const resp = await fetch(`${BASES[cfg.env]}/access-token`, {
+  let resp: Response;
+  try {
+    resp = await fetch(`${BASES[cfg.env]}/access-token`, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ public_key: cfg.publicKey, secret_key: cfg.secretKey }),
-  });
+    });
+  } catch (e) {
+    console.error("Mullahc token request failed", e);
+    return { ok: false as const, error: "The payout service could not be reached" };
+  }
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok || data.status !== "success" || !data.token) {
     console.error("Mullahc token failed", resp.status, JSON.stringify(data).slice(0, 300));
@@ -50,9 +56,12 @@ async function getToken(cfg: MullahcConfig) {
 /** Checks whether Mullahc accepts the keys, and whether they belong to the other environment instead. */
 export async function testMullahcKeys(cfg: MullahcConfig) {
   const here = await getToken(cfg);
-  if (here.ok) return { keysValid: true, otherEnvValid: false };
-  const other = await getToken({ ...cfg, env: cfg.env === "live" ? "sandbox" : "live" });
-  return { keysValid: false, otherEnvValid: other.ok };
+  if (here.ok) return { keysValid: true, otherEnvValid: false, swapped: false };
+  const otherEnv = cfg.env === "live" ? "sandbox" : "live";
+  const other = await getToken({ ...cfg, env: otherEnv });
+  if (other.ok) return { keysValid: false, otherEnvValid: true, swapped: false };
+  const swapped = await getToken({ ...cfg, publicKey: cfg.secretKey, secretKey: cfg.publicKey });
+  return { keysValid: false, otherEnvValid: false, swapped: swapped.ok };
 }
 
 export type PayoutState = "pending" | "success" | "failed";

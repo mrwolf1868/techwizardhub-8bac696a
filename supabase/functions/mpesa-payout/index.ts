@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "Please sign in" }, 401);
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})));
-    if (!parsed.success) return json({ error: "Check the amount and M-Pesa number" }, 400);
+    if (!parsed.success) return json({ error: "Check the amount and M-Pesa number" });
     const body = parsed.data;
 
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
@@ -68,14 +68,14 @@ Deno.serve(async (req) => {
 
     if (body.action === "send_pending") {
       const { data: w } = await admin.from("wallet_withdrawals").select("id,phone,amount,status").eq("id", body.withdrawalId).maybeSingle();
-      if (!w || w.status !== "pending") return json({ error: "This request is no longer waiting to be sent" }, 409);
+      if (!w || w.status !== "pending") return json({ error: "This request is no longer waiting to be sent" });
       kind = "wallet"; id = w.id; phone = w.phone; amount = w.amount;
     } else {
       kind = body.action;
       phone = body.phone; amount = body.amount;
       const fn = kind === "wallet" ? "payout_reserve_wallet" : "payout_reserve_profit";
       const { data, error } = await admin.rpc(fn, { _uid: user.id, _amount: amount, _phone: phone });
-      if (error || !data) return json({ error: error?.message ?? "Could not start the withdrawal" }, 400);
+      if (error || !data) return json({ error: error?.message ?? "Could not start the withdrawal" });
       id = data as string;
     }
 
