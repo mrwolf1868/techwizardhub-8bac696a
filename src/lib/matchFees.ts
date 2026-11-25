@@ -8,3 +8,7 @@ export const winnerPayout = (stake: number) => stake * 2;
 export const availableProfit = (earnedFees: number, withdrawn: number) => Math.max(0, earnedFees - withdrawn);
 export const canWithdrawProfit = (amount: number, available: number) =>
   Number.isInteger(amount) && amount > 0 && amount <= available;
+/** Withdrawal fee: 2% of the amount, rounded up. Mirrors public.withdrawal_fee. */
+export const withdrawalFee = (amount: number) => (amount > 0 ? Math.ceil(amount * 0.02) : 0);
+/** A withdrawal takes the amount plus its fee from the balance. */
+export const withdrawalTotal = (amount: number) => amount + withdrawalFee(amount);

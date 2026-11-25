@@ -11,6 +11,7 @@ import { z } from "zod";
 import { normalizePhone } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { withdrawalFee, withdrawalTotal } from "@/lib/matchFees";
 
 const schema = z.object({
   phone: z
@@ -63,7 +64,9 @@ const Buy = () => {
   const hasProcessing = withdrawals.some((row) => row.status === "processing" || row.status === "pending");
   useEffect(() => {
     if (!hasProcessing) return;
-    const timer = window.setInterval(() => { void loadWithdrawals(); void syncFromSupabase(); }, 8000);
+    const timer = window.setInterval(() => {
+      void supabase.functions.invoke("mpesa-payout", { body: { action: "check" } }).finally(() => { void loadWithdrawals(); void syncFromSupabase(); });
+    }, 8000);
     return () => window.clearInterval(timer);
   }, [hasProcessing, loadWithdrawals, syncFromSupabase]);
 
@@ -153,7 +156,7 @@ const Buy = () => {
     if (!Number.isInteger(requestedAmount) || requestedAmount < 1) return toast.error("Enter a valid amount");
     if (requestedAmount < limits.min_withdraw) return toast.error(`The minimum withdrawal is KSh ${limits.min_withdraw}`);
     if (requestedAmount > limits.max_withdraw) return toast.error(`The maximum withdrawal is KSh ${limits.max_withdraw.toLocaleString()}`);
-    if (requestedAmount > coins) return toast.error("Insufficient balance");
+    if (withdrawalTotal(requestedAmount) > coins) return toast.error(`Insufficient balance. You need KSh ${withdrawalTotal(requestedAmount)} including the 2% fee.`);
 
     setWithdrawBusy(true);
     const { data, error } = await supabase.functions.invoke("mpesa-payout", {
@@ -170,7 +173,7 @@ const Buy = () => {
     }
     setWithdrawAmount("");
     await Promise.all([syncFromSupabase(), loadWithdrawals()]);
-    toast.success("Withdrawal sent to M-Pesa. You will receive an SMS once Safaricom completes it.");
+    toast.success(data.status === "paid" ? "Withdrawal paid to your M-Pesa." : "Withdrawal sent. You will get an M-Pesa SMS once it completes.");
   };
 
   return (
@@ -291,13 +294,20 @@ const Buy = () => {
             <Input id="withdraw-phone" inputMode="tel" placeholder="0712345678 or 254712345678" value={withdrawPhone}
               onChange={(event) => setWithdrawPhone(event.target.value)} maxLength={18} className="mt-2" disabled={withdrawBusy} />
             <Label htmlFor="withdraw-amount" className="mt-4 block text-xs uppercase tracking-widest text-muted-foreground">Amount (KSh)</Label>
-            <Input id="withdraw-amount" type="number" min={limits.min_withdraw} max={Math.min(coins, limits.max_withdraw)} value={withdrawAmount}
+            <Input id="withdraw-amount" type="number" min={limits.min_withdraw} max={limits.max_withdraw} value={withdrawAmount}
               onChange={(event) => setWithdrawAmount(event.target.value)} className="mt-2" disabled={withdrawBusy} />
-            <p className="mt-2 text-xs text-muted-foreground">Withdraw from KSh {limits.min_withdraw.toLocaleString()} to KSh {limits.max_withdraw.toLocaleString()}.</p>
+            <p className="mt-2 text-xs text-muted-foreground">Withdraw from KSh {limits.min_withdraw.toLocaleString()} to KSh {limits.max_withdraw.toLocaleString()}. A 2% withdrawal fee applies.</p>
+            {Number(withdrawAmount) > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-2 rounded-md border border-border bg-muted/40 p-3 text-center text-xs">
+                <div><div className="text-muted-foreground">You receive</div><strong>KSh {Math.floor(Number(withdrawAmount)).toLocaleString()}</strong></div>
+                <div><div className="text-muted-foreground">Fee (2%)</div><strong>KSh {withdrawalFee(Math.floor(Number(withdrawAmount))).toLocaleString()}</strong></div>
+                <div><div className="text-muted-foreground">Taken from balance</div><strong>KSh {withdrawalTotal(Math.floor(Number(withdrawAmount))).toLocaleString()}</strong></div>
+              </div>
+            )}
             <Button className="mt-4 w-full" onClick={requestWithdrawal} disabled={withdrawBusy || coins < 1}>
               {withdrawBusy ? "Sending to M-Pesa…" : "Withdraw to M-Pesa"}
             </Button>
-            <p className="mt-3 text-xs text-muted-foreground">Money is sent straight to your M-Pesa. If Safaricom declines the payout, your balance is returned automatically.</p>
+            <p className="mt-3 text-xs text-muted-foreground">Money is sent straight to your M-Pesa. If the payout fails, the amount and fee are returned to your balance automatically.</p>
           </Card>
           <div className="transaction-history">
             <h2>Withdrawal history</h2>

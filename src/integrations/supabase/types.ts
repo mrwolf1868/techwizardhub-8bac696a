@@ -104,6 +104,27 @@ export type Database = {
         }
         Relationships: []
       }
+      balance_resets: {
+        Row: {
+          id: string
+          previous_coins: number
+          reset_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          previous_coins: number
+          reset_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          previous_coins?: number
+          reset_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       bots: {
         Row: {
           code: string
@@ -487,6 +508,39 @@ export type Database = {
         }
         Relationships: []
       }
+      rules_answers: {
+        Row: {
+          answer: string
+          created_at: string
+          game: string
+          hits: number
+          id: string
+          last_asked_at: string
+          question: string
+          question_key: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          game: string
+          hits?: number
+          id?: string
+          last_asked_at?: string
+          question: string
+          question_key: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          game?: string
+          hits?: number
+          id?: string
+          last_asked_at?: string
+          question?: string
+          question_key?: string
+        }
+        Relationships: []
+      }
       service_pricing: {
         Row: {
           continuation_price_coins: number
@@ -672,6 +726,7 @@ export type Database = {
           amount: number
           conversation_id: string | null
           created_at: string
+          fee: number
           id: string
           mpesa_receipt: string | null
           originator_conversation_id: string | null
@@ -686,6 +741,7 @@ export type Database = {
           amount: number
           conversation_id?: string | null
           created_at?: string
+          fee?: number
           id?: string
           mpesa_receipt?: string | null
           originator_conversation_id?: string | null
@@ -700,6 +756,7 @@ export type Database = {
           amount?: number
           conversation_id?: string | null
           created_at?: string
+          fee?: number
           id?: string
           mpesa_receipt?: string | null
           originator_conversation_id?: string | null
@@ -740,6 +797,10 @@ export type Database = {
       }
       admin_set_user_banned: {
         Args: { _banned: boolean; _user_id: string }
+        Returns: undefined
+      }
+      admin_set_user_coins: {
+        Args: { _balance: number; _user_id: string }
         Returns: undefined
       }
       can_access_chat_room: { Args: { _room: string }; Returns: boolean }
@@ -819,6 +880,7 @@ export type Database = {
         Args: { _default: number; _field: string; _key: string }
         Returns: number
       }
+      withdrawal_fee: { Args: { _amount: number }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "user"

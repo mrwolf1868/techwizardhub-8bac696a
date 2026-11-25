@@ -88,7 +88,7 @@ type Match = {
 
 type FeeTx = { amount: number; created_at: string };
 type ProfitSummary = { total_fees: number; total_withdrawn: number; available: number };
-type WalletWithdrawal = { id: string; user_id: string; phone: string; amount: number; status: string; created_at: string; processed_at: string | null };
+type WalletWithdrawal = { id: string; user_id: string; phone: string; amount: number; fee: number; status: string; created_at: string; processed_at: string | null };
 type ProfitWithdrawal = { id: string; created_by: string; phone: string; amount: number; status: string; result_desc: string | null; created_at: string };
 
 type MpesaTx = {
@@ -137,7 +137,7 @@ const Admin = () => {
       supabase.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("mpesa_transactions").select("id, phone, amount, status, mpesa_receipt, created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("admin_settings").select("key, value"),
-      supabase.from("wallet_withdrawals").select("id,user_id,phone,amount,status,created_at,processed_at").order("created_at", { ascending: false }).limit(200),
+      supabase.from("wallet_withdrawals").select("id,user_id,phone,amount,fee,status,created_at,processed_at").order("created_at", { ascending: false }).limit(200),
       supabase.rpc("admin_get_profit_summary"),
       supabase.from("admin_profit_withdrawals").select("id,created_by,phone,amount,status,result_desc,created_at").order("created_at", { ascending: false }).limit(100),
     ]);
@@ -489,6 +489,18 @@ const UsersPanel = ({ profiles, onChange }: { profiles: Profile[]; onChange: () 
     onChange();
   };
 
+  const [editing, setEditing] = useState<{ uid: string; value: string } | null>(null);
+  const saveBalance = async () => {
+    if (!editing) return;
+    const value = Number(editing.value);
+    if (!Number.isInteger(value) || value < 0) return toast.error("Enter a whole number of 0 or more");
+    const { error } = await supabase.rpc("admin_set_user_coins", { _user_id: editing.uid, _balance: value });
+    if (error) return toast.error(error.message);
+    toast.success("Balance updated");
+    setEditing(null);
+    onChange();
+  };
+
   const toggleBan = async (p: Profile) => {
     const banned = !p.banned;
     const { error } = await supabase.rpc("admin_set_user_banned", { _user_id: p.user_id, _banned: banned });
@@ -521,7 +533,15 @@ const UsersPanel = ({ profiles, onChange }: { profiles: Profile[]; onChange: () 
               <TableRow key={p.user_id} className={p.banned ? "opacity-60" : ""}>
                 <TableCell className="font-mono text-xs">{p.phone}</TableCell>
                 <TableCell className="text-xs">{p.email || "—"}</TableCell>
-                <TableCell className="text-right font-bold text-coin">{p.coins}</TableCell>
+                <TableCell className="text-right font-bold text-coin">
+                  {editing?.uid === p.user_id ? (
+                    <form className="flex items-center justify-end gap-1" onSubmit={(e) => { e.preventDefault(); void saveBalance(); }}>
+                      <Input autoFocus type="number" min={0} aria-label="New balance" value={editing.value} onChange={(e) => setEditing({ uid: p.user_id, value: e.target.value })} className="h-8 w-24 text-right" />
+                      <Button size="sm" type="submit">Save</Button>
+                      <Button size="sm" type="button" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
+                    </form>
+                  ) : p.coins}
+                </TableCell>
                 <TableCell className="text-xs">{p.games_played}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">
                   {new Date(p.last_active).toLocaleDateString()}
@@ -535,6 +555,7 @@ const UsersPanel = ({ profiles, onChange }: { profiles: Profile[]; onChange: () 
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
+                    <Button size="sm" variant="outline" onClick={() => setEditing({ uid: p.user_id, value: String(p.coins) })}>Edit balance</Button>
                     <Button size="sm" variant="secondary" onClick={() => adjustCoins(p.user_id, 100)}>+100</Button>
                     <Button size="sm" variant="secondary" onClick={() => adjustCoins(p.user_id, -100)}>-100</Button>
                     <Button size="sm" variant={p.banned ? "default" : "destructive"} onClick={() => toggleBan(p)}>
@@ -691,7 +712,7 @@ const WithdrawalsPanel = ({
     await onChange();
     if (failure) return toast.error(failure);
     setAmount("");
-    toast.success("Payout sent to M-Pesa. Available profit updates when Safaricom confirms.");
+    toast.success("Payout sent. It is marked paid once Mullahc confirms it.");
   };
 
   const sendRequest = async (request: WalletWithdrawal) => {
@@ -726,9 +747,9 @@ const WithdrawalsPanel = ({
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="bg-gradient-card p-4">
           <h2 className="font-display text-sm font-bold">Withdraw profit to M-Pesa</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Sends your match fees straight to M-Pesa. Available profit drops only by the amount sent; failed payouts return to profit.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Sends your earned fees (match fees and 2% withdrawal fees) to M-Pesa. Available profit drops only by the amount sent; failed payouts return to profit.</p>
           <div className={`payout-setup mt-3 ${payoutReady ? "ready" : ""}`} role="status">
-            {payoutReady === null ? "Checking M-Pesa payout setup…" : payoutReady ? "M-Pesa payouts are ready." : "M-Pesa payouts are not set up yet. Withdrawals are refused until the payout keys are added securely."}
+            {payoutReady === null ? "Checking payout setup…" : payoutReady ? "Payouts are ready." : "Payouts are not set up yet. Add your Mullahc keys in Settings; withdrawals are refused until then."}
           </div>
           <div className="mt-4 grid gap-3">
             <div>
@@ -772,7 +793,7 @@ const WithdrawalsPanel = ({
                 {requests.map((request) => (
                   <TableRow key={request.id}>
                     <TableCell className="text-xs"><span className="block font-mono">{profilePhone(request.user_id)}</span><span className="text-muted-foreground">to +{request.phone}</span></TableCell>
-                    <TableCell>{ksh(request.amount)}</TableCell>
+                    <TableCell>{ksh(request.amount)}{request.fee ? <span className="block text-[10px] text-muted-foreground">+{ksh(request.fee)} fee</span> : null}</TableCell>
                     <TableCell className="capitalize">{request.status}</TableCell>
                     <TableCell>
                       {request.status === "pending" ? <div className="flex gap-1">
@@ -791,54 +812,58 @@ const WithdrawalsPanel = ({
   );
 };
 
-/* ---------- Withdrawal (B2C) keys ---------- */
-const B2C_FIELDS = [
-  { key: "mpesa_b2c_consumer_key", label: "Consumer Key", secret: false },
-  { key: "mpesa_b2c_consumer_secret", label: "Consumer Secret", secret: true },
-  { key: "mpesa_b2c_shortcode", label: "B2C Shortcode (paybill that sends money)", secret: false },
-  { key: "mpesa_b2c_initiator_name", label: "Initiator Username", secret: false },
-  { key: "mpesa_b2c_security_credential", label: "Security Credential (encrypted initiator password)", secret: true },
+/* ---------- Payout (Mullahc) keys ---------- */
+const MULLAHC_FIELDS = [
+  { key: "mullahc_public_key", label: "Public key", secret: false },
+  { key: "mullahc_secret_key", label: "Secret key", secret: true },
 ] as const;
 
 const PayoutKeysCard = ({ settings, onSaved }: { settings: Record<string, unknown>; onSaved: () => void }) => {
   const [vals, setVals] = useState<Record<string, string>>({});
-  const [env, setEnv] = useState<"sandbox" | "production">("sandbox");
+  const [env, setEnv] = useState<"sandbox" | "live">("live");
   const [saving, setSaving] = useState(false);
+  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mullahc-webhook`;
   useEffect(() => {
     const v: Record<string, string> = {};
-    B2C_FIELDS.forEach((f) => { const x = settings[f.key]; v[f.key] = typeof x === "string" ? x : ""; });
+    MULLAHC_FIELDS.forEach((f) => { const x = settings[f.key]; v[f.key] = typeof x === "string" ? x : ""; });
     setVals(v);
-    setEnv(settings.mpesa_b2c_env === "production" ? "production" : "sandbox");
+    setEnv(settings.mullahc_env === "sandbox" ? "sandbox" : "live");
   }, [settings]);
   const save = async () => {
-    if (B2C_FIELDS.some((f) => !vals[f.key]?.trim())) return toast.error("Fill in all withdrawal keys");
+    if (MULLAHC_FIELDS.some((f) => !vals[f.key]?.trim())) return toast.error("Fill in both payout keys");
+    const sandboxKey = vals.mullahc_public_key.trim().startsWith("sbx_") || vals.mullahc_secret_key.trim().startsWith("sbx_");
+    if (sandboxKey !== (env === "sandbox")) return toast.error(env === "sandbox" ? "Sandbox keys start with sbx_" : "These look like sandbox keys — switch to Sandbox or use your live keys");
     setSaving(true);
     const now = new Date().toISOString();
-    const rows = [...B2C_FIELDS.map((f) => ({ key: f.key, value: vals[f.key].trim() as never, updated_at: now })), { key: "mpesa_b2c_env", value: env as never, updated_at: now }];
+    const rows = [...MULLAHC_FIELDS.map((f) => ({ key: f.key, value: vals[f.key].trim() as never, updated_at: now })), { key: "mullahc_env", value: env as never, updated_at: now }];
     const { error } = await supabase.from("admin_settings").upsert(rows);
     setSaving(false);
     if (error) return toast.error(error.message);
-    await supabase.from("activity_logs").insert({ event: "setting_change", detail: `M-Pesa withdrawal keys updated (env: ${env})` });
-    toast.success("Withdrawal keys saved");
+    await supabase.from("activity_logs").insert({ event: "setting_change", detail: `Payout keys updated (env: ${env})` });
+    toast.success("Payout keys saved");
     onSaved();
   };
   return (
     <Card className="bg-gradient-card p-4">
-      <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">M-Pesa withdrawal (B2C) keys</h3>
-      <p className="mt-1 text-xs text-muted-foreground">Used only for sending money to players and your profit withdrawals. Deposit settings below are not affected. Only admins can see these.</p>
+      <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">Withdrawal payouts (Mullahc)</h3>
+      <p className="mt-1 text-xs text-muted-foreground">Player withdrawals and your profit withdrawals are sent from your Mullahc business wallet. Find the keys under Developers in your Mullahc account. Deposit settings below are not affected. Only admins can see these.</p>
       <div className="mt-4 grid gap-3">
         <div className="flex w-fit gap-1 rounded-lg border border-border/60 p-1">
-          {(["sandbox", "production"] as const).map((e) => (
+          {(["sandbox", "live"] as const).map((e) => (
             <button key={e} type="button" onClick={() => setEnv(e)} className={`rounded-md px-3 py-1 text-xs capitalize ${env === e ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{e}</button>
           ))}
         </div>
-        {B2C_FIELDS.map((f) => (
+        {MULLAHC_FIELDS.map((f) => (
           <div key={f.key}>
             <label className="text-[10px] uppercase tracking-widest text-muted-foreground">{f.label}</label>
-            <Input type={f.secret ? "password" : "text"} value={vals[f.key] ?? ""} onChange={(e) => setVals((v) => ({ ...v, [f.key]: e.target.value }))} className="mt-1 font-mono" />
+            <Input type={f.secret ? "password" : "text"} value={vals[f.key] ?? ""} onChange={(e) => setVals((v) => ({ ...v, [f.key]: e.target.value }))} className="mt-1 font-mono" autoComplete="off" />
           </div>
         ))}
-        <Button onClick={save} disabled={saving} className="w-fit">{saving ? "Saving…" : "Save withdrawal keys"}</Button>
+        <div>
+          <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Webhook (IPN) URL — sent automatically with each payout</label>
+          <Input readOnly value={webhookUrl} className="mt-1 font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
+        </div>
+        <Button onClick={save} disabled={saving} className="w-fit">{saving ? "Saving…" : "Save payout keys"}</Button>
       </div>
     </Card>
   );

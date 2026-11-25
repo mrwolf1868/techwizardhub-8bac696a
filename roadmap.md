@@ -17,3 +17,9 @@
 - [x] Live lobby and match chat; View button on match alerts; Tic-Tac-Toe and Connect Four.
 - [ ] Two-player test of the new games and match chat — needs two signed-in players at once.
 - [ ] Set service prices — waiting on the user's list.
+- [x] Add wrangler.jsonc deploy config (never modify).
+- [ ] Payouts through Mullahc (player + admin profit), keys in admin settings.
+- [x] New users start at 0 coins.
+- [ ] Clear every user's balance (with backup) and let admin set any balance.
+- [ ] Charge 2% on withdrawals.
+- [ ] AI rules helper for all four games with shared cached answers.

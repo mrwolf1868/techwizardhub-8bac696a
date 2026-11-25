@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { availableProfit, canWithdrawProfit, entryCost, entryFee, winnerPayout } from "./matchFees";
+import { availableProfit, canWithdrawProfit, entryCost, entryFee, winnerPayout, withdrawalFee, withdrawalTotal } from "./matchFees";
 
 describe("match fees", () => {
   it("charges each player 5% of the stake on entry", () => {
@@ -19,5 +19,10 @@ describe("match fees", () => {
     expect(availableProfit(50, 20)).toBe(30);
     expect(canWithdrawProfit(30, availableProfit(50, 20))).toBe(true);
     expect(canWithdrawProfit(31, availableProfit(50, 20))).toBe(false);
+  });
+  it("charges 2% on withdrawals, rounded up", () => {
+    expect(withdrawalFee(100)).toBe(2);
+    expect(withdrawalFee(10)).toBe(1);
+    expect(withdrawalTotal(500)).toBe(510);
   });
 });
