@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 
     if (body.action === "status") return json({ ready: !!cfg, provider: "mullahc", env: cfg?.env ?? null });
     if ((body.action === "profit" || body.action === "send_pending") && !isAdmin) return json({ error: "Admins only" }, 403);
-    if (!cfg) return json({ error: NOT_READY, notConfigured: true }, 503);
+    if (!cfg) return json(body.action === "check" ? { updated: 0, notConfigured: true } : { error: NOT_READY, notConfigured: true });
 
     if (body.action === "check") {
       // Re-check payouts still waiting on the provider (backup for a missed webhook).
