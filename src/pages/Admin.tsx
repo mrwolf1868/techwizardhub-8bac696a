@@ -114,7 +114,15 @@ type Section =
   | "settings";
 
 const Admin = () => {
-  const { isAdmin, userId } = useUserStore();
+  const { isAdmin, userId, syncFromSupabase } = useUserStore();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  useEffect(() => {
+    let mounted = true;
+    void supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) await syncFromSupabase().catch(() => undefined);
+    }).finally(() => { if (mounted) setCheckingAuth(false); });
+    return () => { mounted = false; };
+  }, [syncFromSupabase]);
   const [section, setSection] = useState<Section>("dashboard");
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -175,6 +183,7 @@ const Admin = () => {
     return () => { supabase.removeChannel(channel); };
   }, [isAdmin]);
 
+  if (checkingAuth) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
   if (!userId) return <Navigate to="/login" replace />;
   if (!isAdmin) return <Navigate to="/" replace />;
 
@@ -822,7 +831,6 @@ const PayoutKeysCard = ({ settings, onSaved }: { settings: Record<string, unknow
   const [vals, setVals] = useState<Record<string, string>>({});
   const [env, setEnv] = useState<"sandbox" | "live">("live");
   const [saving, setSaving] = useState(false);
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mullahc-webhook`;
   useEffect(() => {
     const v: Record<string, string> = {};
     MULLAHC_FIELDS.forEach((f) => { const x = settings[f.key]; v[f.key] = typeof x === "string" ? x : ""; });
@@ -846,7 +854,7 @@ const PayoutKeysCard = ({ settings, onSaved }: { settings: Record<string, unknow
   return (
     <Card className="bg-gradient-card p-4">
       <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">Withdrawal payouts (Mullahc)</h3>
-      <p className="mt-1 text-xs text-muted-foreground">Player withdrawals and your profit withdrawals are sent from your Mullahc business wallet. Find the keys under Developers in your Mullahc account. Deposit settings below are not affected. Only admins can see these.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Player withdrawals and your profit withdrawals are sent from your Mullahc business wallet. Find the keys under Developers in your Mullahc account; payment confirmations are set up automatically. Deposit settings below are not affected. Only admins can see these.</p>
       <div className="mt-4 grid gap-3">
         <div className="flex w-fit gap-1 rounded-lg border border-border/60 p-1">
           {(["sandbox", "live"] as const).map((e) => (
@@ -859,10 +867,6 @@ const PayoutKeysCard = ({ settings, onSaved }: { settings: Record<string, unknow
             <Input type={f.secret ? "password" : "text"} value={vals[f.key] ?? ""} onChange={(e) => setVals((v) => ({ ...v, [f.key]: e.target.value }))} className="mt-1 font-mono" autoComplete="off" />
           </div>
         ))}
-        <div>
-          <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Webhook (IPN) URL — sent automatically with each payout</label>
-          <Input readOnly value={webhookUrl} className="mt-1 font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
-        </div>
         <Button onClick={save} disabled={saving} className="w-fit">{saving ? "Saving…" : "Save payout keys"}</Button>
       </div>
     </Card>

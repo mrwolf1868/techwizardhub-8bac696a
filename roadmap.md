@@ -3,7 +3,7 @@
 - [x] Searches cost nothing; both players are charged when an opponent joins; online players get a Join notification.
 - [x] Confirm before leaving a search or quitting a match, with a forfeit warning.
 - [x] Real M-Pesa payouts for player and admin profit withdrawals, refused when payout keys are missing.
-- [ ] Live payouts — waiting on the M-Pesa payout (B2C) keys from Safaricom.
+- [ ] Live payouts — waiting on the Mullahc public and secret keys (Admin → Settings).
 - [x] Keep match fees atomic, settle both stakes correctly, and count games when a match finishes.
 - [x] Add private friend codes and targeted challenges to online players, with the invited player and stake visible.
 - [x] Add player M-Pesa withdrawal requests, admin review, and automatic refunds when rejected.
@@ -18,8 +18,8 @@
 - [ ] Two-player test of the new games and match chat — needs two signed-in players at once.
 - [ ] Set service prices — waiting on the user's list.
 - [x] Add wrangler.jsonc deploy config (never modify).
-- [ ] Payouts through Mullahc (player + admin profit), keys in admin settings.
+- [x] Payouts through Mullahc (player + admin profit), keys in admin settings.
 - [x] New users start at 0 coins.
-- [ ] Clear every user's balance (with backup) and let admin set any balance.
-- [ ] Charge 2% on withdrawals.
-- [ ] AI rules helper for all four games with shared cached answers.
+- [x] Clear every user's balance (with backup) and let admin set any balance.
+- [x] Charge 2% on withdrawals.
+- [x] AI rules helper for all four games with shared cached answers.
