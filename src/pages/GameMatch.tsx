@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ChessPiece, DraughtPiece } from "@/components/GamePieces";
 import { GameChat } from "@/components/GameChat";
-import { C4_COLS, c4Drop, gameName, gridOutcome, tttPlay } from "@/lib/games";
+import { RulesHelper } from "@/components/RulesHelper";
+import { C4_COLS, c4Drop, gameName, gridOutcome, isGameId, tttPlay } from "@/lib/games";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserStore } from "@/store/userStore";
 import { applyMove, legalMoves, Move, Side } from "@/lib/draughts";
@@ -267,6 +268,7 @@ const GameMatch = () => {
                 <Button variant="destructive" className="mt-3 w-full" onClick={() => setConfirmOpen(true)}><Flag /> Quit match</Button>
               )}
               {isPlayer && m.status !== "waiting" && <GameChat room={`match:${m.id}`} title="Match chat" labelFor={() => "Opponent"} />}
+              {isGameId(m.game_type) && <RulesHelper game={m.game_type} />}
               {m.status !== "active" && m.status !== "waiting" && (
                 <Button className="mt-3 w-full" onClick={() => navigate(`/games/${m.game_type}`)}>Play again</Button>
               )}

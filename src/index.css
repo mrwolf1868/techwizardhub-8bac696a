@@ -355,3 +355,17 @@
 .player-swatch-piece { width:24px; height:24px; flex:none; display:grid; place-items:center; }
 .player-swatch-piece .draught-piece { width:100%; height:100%; }
 .art-ttt .draught-piece, .art-c4 .draught-piece { width:84%; height:84%; }
+
+/* Rules helper */
+.rules-helper { margin-top:16px; border:1px solid hsl(var(--border)); border-radius:10px; background:hsl(var(--card)); overflow:hidden; }
+.rules-helper header { display:flex; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid hsl(var(--border)); font-size:11px; color:hsl(var(--muted-foreground)); }
+.rules-helper header h3 { margin:0; flex:1; font-size:13px; font-weight:700; color:hsl(var(--foreground)); }
+.rules-helper .rules-body { padding:12px 14px; display:flex; flex-direction:column; gap:8px; min-height:64px; }
+.rules-suggestions { display:flex; flex-wrap:wrap; gap:6px; }
+.rules-suggestions button { border:1px solid hsl(var(--border)); border-radius:999px; padding:5px 11px; font-size:12px; color:hsl(var(--foreground)); background:hsl(var(--secondary)); }
+.rules-suggestions button:hover { border-color:hsl(var(--primary)); }
+.rules-question { margin:0; font-size:12px; font-weight:700; color:hsl(var(--muted-foreground)); }
+.rules-answer { margin:0; font-size:13px; line-height:1.55; white-space:pre-line; }
+.rules-status { margin:0; font-size:12px; color:hsl(var(--muted-foreground)); }
+.rules-error { margin:0; font-size:12px; color:hsl(var(--destructive)); }
+.rules-helper form { display:flex; gap:8px; padding:10px 14px; border-top:1px solid hsl(var(--border)); }
