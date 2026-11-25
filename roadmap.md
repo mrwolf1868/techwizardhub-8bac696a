@@ -23,3 +23,10 @@
 - [x] Clear every user's balance (with backup) and let admin set any balance.
 - [x] Charge 2% on withdrawals.
 - [x] AI rules helper for all four games with shared cached answers.
+- [x] All profit (match + withdrawal fees) goes straight to the admin wallet; admin withdrawals have no fee; admin panel shows earned/withdrawn/wallet.
+- [x] Deposit and Withdraw buttons plus a unique username on the Profile page.
+- [x] Withdrawals send automatically (no admin approval).
+- [x] WhatsApp channel button in the top bar (link never shown).
+- [x] Remember site settings and service list between visits for faster loading.
+- [ ] "Clear every user and start fresh" — waiting on what to remove.
+- [ ] Math Quiz and Coin Trade — waiting on the user's choice of fair version (hidden bots and rigged markets refused).
