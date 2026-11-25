@@ -1,7 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
-import { checkPayout, loadMullahcConfig, payoutTransactionId, sendPayout } from "../_shared/mullahcPayout.ts";
+import { checkPayout, loadMullahcConfig, payoutTransactionId, sendPayout, testMullahcKeys } from "../_shared/mullahcPayout.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -32,7 +32,12 @@ Deno.serve(async (req) => {
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
     const cfg = await loadMullahcConfig(admin);
 
-    if (body.action === "status") return json({ ready: !!cfg, provider: "mullahc", env: cfg?.env ?? null });
+    if (body.action === "status") {
+      if (!cfg) return json({ ready: false, provider: "mullahc", env: null });
+      if (!isAdmin) return json({ ready: true, provider: "mullahc", env: cfg.env });
+      const test = await testMullahcKeys(cfg);
+      return json({ ready: test.keysValid, configured: true, provider: "mullahc", env: cfg.env, ...test });
+    }
     if ((body.action === "profit" || body.action === "send_pending") && !isAdmin) return json({ error: "Admins only" }, 403);
     if (!cfg) return json(body.action === "check" ? { updated: 0, notConfigured: true } : { error: NOT_READY, notConfigured: true });
 
@@ -82,7 +87,7 @@ Deno.serve(async (req) => {
     });
     if (!result.ok) {
       await admin.rpc("payout_complete", { _kind: kind, _id: id, _conversation_id: null, _originator_id: null, _success: false, _receipt: null, _desc: result.error });
-      return json({ error: `The payout was not sent: ${result.error}. Your balance was returned.` }, 502);
+      return json({ error: `The payout was not sent: ${result.error}. Your balance was returned.`, refunded: true });
     }
     await admin.rpc("payout_mark_processing", { _kind: kind, _id: id, _conversation_id: result.reference || null, _originator_id: null });
     if (result.state !== "pending") {

@@ -47,6 +47,14 @@ async function getToken(cfg: MullahcConfig) {
   return { ok: true as const, token: String(data.token) };
 }
 
+/** Checks whether Mullahc accepts the keys, and whether they belong to the other environment instead. */
+export async function testMullahcKeys(cfg: MullahcConfig) {
+  const here = await getToken(cfg);
+  if (here.ok) return { keysValid: true, otherEnvValid: false };
+  const other = await getToken({ ...cfg, env: cfg.env === "live" ? "sandbox" : "live" });
+  return { keysValid: false, otherEnvValid: other.ok };
+}
+
 export type PayoutState = "pending" | "success" | "failed";
 const normState = (s: unknown): PayoutState => {
   const v = String(s ?? "").toLowerCase();

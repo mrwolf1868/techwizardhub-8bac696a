@@ -694,9 +694,18 @@ const WithdrawalsPanel = ({
   }, [adminPhone]);
 
   const [payoutReady, setPayoutReady] = useState<boolean | null>(null);
+  const [payoutNote, setPayoutNote] = useState("");
   useEffect(() => {
     void supabase.functions.invoke("mpesa-payout", { body: { action: "status" } })
-      .then(({ data }) => setPayoutReady(!!data?.ready), () => setPayoutReady(false));
+      .then(({ data }) => {
+        setPayoutReady(!!data?.ready);
+        if (data?.configured && !data?.ready) {
+          const other = data.env === "live" ? "Sandbox" : "Live";
+          setPayoutNote(data.otherEnvValid
+            ? `Mullahc accepts these keys only in ${other} mode. Switch the mode in Settings to ${other} and save.`
+            : "Mullahc rejected the saved keys. Copy the public and secret keys again from your Mullahc Developers page and save them in Settings.");
+        }
+      }, () => setPayoutReady(false));
   }, []);
 
   const callPayout = async (body: Record<string, unknown>) => {
@@ -758,7 +767,7 @@ const WithdrawalsPanel = ({
           <h2 className="font-display text-sm font-bold">Withdraw profit to M-Pesa</h2>
           <p className="mt-1 text-xs text-muted-foreground">Sends your earned fees (match fees and 2% withdrawal fees) to M-Pesa. Available profit drops only by the amount sent; failed payouts return to profit.</p>
           <div className={`payout-setup mt-3 ${payoutReady ? "ready" : ""}`} role="status">
-            {payoutReady === null ? "Checking payout setup…" : payoutReady ? "Payouts are ready." : "Payouts are not set up yet. Add your Mullahc keys in Settings; withdrawals are refused until then."}
+            {payoutReady === null ? "Checking payout setup…" : payoutReady ? "Payouts are ready." : payoutNote || "Payouts are not set up yet. Add your Mullahc keys in Settings; withdrawals are refused until then."}
           </div>
           <div className="mt-4 grid gap-3">
             <div>
