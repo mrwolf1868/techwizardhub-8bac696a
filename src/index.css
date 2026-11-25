@@ -369,3 +369,6 @@
 .rules-status { margin:0; font-size:12px; color:hsl(var(--muted-foreground)); }
 .rules-error { margin:0; font-size:12px; color:hsl(var(--destructive)); }
 .rules-helper form { display:flex; gap:8px; padding:10px 14px; border-top:1px solid hsl(var(--border)); }
+.whatsapp-button { color:hsl(var(--win)); }
+.username-form { display:flex; gap:8px; margin-top:12px; }
+.profile-wallet-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0; }

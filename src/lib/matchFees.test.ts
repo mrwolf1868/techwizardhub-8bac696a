@@ -25,4 +25,8 @@ describe("match fees", () => {
     expect(withdrawalFee(10)).toBe(1);
     expect(withdrawalTotal(500)).toBe(510);
   });
+  it("charges the admin no withdrawal fee", () => {
+    expect(withdrawalFee(500, true)).toBe(0);
+    expect(withdrawalTotal(500, true)).toBe(500);
+  });
 });

@@ -17,6 +17,15 @@ const nav = [
   { to: "/profile", title: "Profile", icon: UserRound },
 ];
 
+const WHATSAPP_CHANNEL = "https://whatsapp.com/channel/0029Vb6Vxo960eBmxo0Q5z0Z";
+const openWhatsApp = () => { window.open(WHATSAPP_CHANNEL, "_blank", "noopener,noreferrer"); };
+
+const WhatsAppIcon = () => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+    <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1-.7-.3-1.4-.7-2-1.3-.6-.5-1-1.1-1.4-1.8-.1-.2 0-.4.1-.5l.4-.4.2-.4v-.4l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.6.6-.9 1.4-.9 2.2 0 .9.4 1.8.9 2.5 1 1.5 2.3 2.7 3.9 3.4 1.6.7 2.2.7 3 .6.6-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.4-.2Z" />
+  </svg>
+);
+
 export const formatKsh = (n: number) => `KSh ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -71,6 +80,9 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="flex items-center gap-2 sm:gap-3">
           <Button variant="ghost" className="header-wallet" onClick={() => navigate("/buy")}>
             <WalletIcon /><span><small>Balance</small><strong>{formatKsh(coins)}</strong></span>
+          </Button>
+          <Button variant="ghost" size="icon" className="whatsapp-button" aria-label="Join our WhatsApp channel" title="Join our WhatsApp channel" onClick={openWhatsApp}>
+            <WhatsAppIcon />
           </Button>
           <MessagesInbox />
           {isAdmin && (

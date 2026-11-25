@@ -85,6 +85,13 @@
       "when": 1795604883876,
       "tag": "0011_mullahc_payouts_withdraw_fee_balance_reset",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795617281797,
+      "tag": "0012_profits_to_admin_wallet_usernames",
+      "breakpoints": true
     }
   ]
 }

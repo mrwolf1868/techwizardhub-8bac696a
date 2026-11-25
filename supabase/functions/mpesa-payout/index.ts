@@ -10,7 +10,7 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("status") }),
   z.object({ action: z.literal("check") }),
   z.object({ action: z.literal("wallet"), amount: z.number().int().min(1).max(150000), phone: z.string().regex(/^254[17]\d{8}$/) }),
-  z.object({ action: z.literal("profit"), amount: z.number().int().min(10).max(150000), phone: z.string().regex(/^254[17]\d{8}$/) }),
+  z.object({ action: z.literal("profit"), amount: z.number().int().min(1).max(150000), phone: z.string().regex(/^254[17]\d{8}$/) }),
   z.object({ action: z.literal("send_pending"), withdrawalId: z.string().uuid() }),
 ]);
 

@@ -473,6 +473,7 @@ export type Database = {
           referred_by: string | null
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           banned?: boolean
@@ -489,6 +490,7 @@ export type Database = {
           referred_by?: string | null
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           banned?: boolean
@@ -505,6 +507,7 @@ export type Database = {
           referred_by?: string | null
           updated_at?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -876,6 +879,7 @@ export type Database = {
         Args: { _amount: number; _phone: string }
         Returns: string
       }
+      set_username: { Args: { _username: string }; Returns: string }
       setting_int: {
         Args: { _default: number; _field: string; _key: string }
         Returns: number

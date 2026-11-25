@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AppLayout, PageSection, formatKsh } from "@/components/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,8 +40,9 @@ const getClientId = () => {
 };
 
 const Buy = () => {
-  const { syncFromSupabase, coins, phoneNumber: profilePhone, userId } = useUserStore();
-  const [tab, setTab] = useState<"deposit" | "withdraw">("deposit");
+  const { syncFromSupabase, coins, phoneNumber: profilePhone, userId, isAdmin } = useUserStore();
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState<"deposit" | "withdraw">(searchParams.get("tab") === "withdraw" ? "withdraw" : "deposit");
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState(70);
   const [loading, setLoading] = useState(false);
@@ -156,7 +158,7 @@ const Buy = () => {
     if (!Number.isInteger(requestedAmount) || requestedAmount < 1) return toast.error("Enter a valid amount");
     if (requestedAmount < limits.min_withdraw) return toast.error(`The minimum withdrawal is KSh ${limits.min_withdraw}`);
     if (requestedAmount > limits.max_withdraw) return toast.error(`The maximum withdrawal is KSh ${limits.max_withdraw.toLocaleString()}`);
-    if (withdrawalTotal(requestedAmount) > coins) return toast.error(`Insufficient balance. You need KSh ${withdrawalTotal(requestedAmount)} including the 2% fee.`);
+    if (withdrawalTotal(requestedAmount, isAdmin) > coins) return toast.error(`Insufficient balance. You need KSh ${withdrawalTotal(requestedAmount, isAdmin)}${isAdmin ? "" : " including the 2% fee"}.`);
 
     setWithdrawBusy(true);
     const { data, error } = await supabase.functions.invoke("mpesa-payout", {
@@ -296,12 +298,12 @@ const Buy = () => {
             <Label htmlFor="withdraw-amount" className="mt-4 block text-xs uppercase tracking-widest text-muted-foreground">Amount (KSh)</Label>
             <Input id="withdraw-amount" type="number" min={limits.min_withdraw} max={limits.max_withdraw} value={withdrawAmount}
               onChange={(event) => setWithdrawAmount(event.target.value)} className="mt-2" disabled={withdrawBusy} />
-            <p className="mt-2 text-xs text-muted-foreground">Withdraw from KSh {limits.min_withdraw.toLocaleString()} to KSh {limits.max_withdraw.toLocaleString()}. A 2% withdrawal fee applies.</p>
+            <p className="mt-2 text-xs text-muted-foreground">Withdraw from KSh {limits.min_withdraw.toLocaleString()} to KSh {limits.max_withdraw.toLocaleString()}. {isAdmin ? "No fee on admin withdrawals." : "A 2% withdrawal fee applies."}</p>
             {Number(withdrawAmount) > 0 && (
               <div className="mt-3 grid grid-cols-3 gap-2 rounded-md border border-border bg-muted/40 p-3 text-center text-xs">
                 <div><div className="text-muted-foreground">You receive</div><strong>KSh {Math.floor(Number(withdrawAmount)).toLocaleString()}</strong></div>
-                <div><div className="text-muted-foreground">Fee (2%)</div><strong>KSh {withdrawalFee(Math.floor(Number(withdrawAmount))).toLocaleString()}</strong></div>
-                <div><div className="text-muted-foreground">Taken from balance</div><strong>KSh {withdrawalTotal(Math.floor(Number(withdrawAmount))).toLocaleString()}</strong></div>
+                <div><div className="text-muted-foreground">{isAdmin ? "Fee (admin)" : "Fee (2%)"}</div><strong>KSh {withdrawalFee(Math.floor(Number(withdrawAmount)), isAdmin).toLocaleString()}</strong></div>
+                <div><div className="text-muted-foreground">Taken from balance</div><strong>KSh {withdrawalTotal(Math.floor(Number(withdrawAmount)), isAdmin).toLocaleString()}</strong></div>
               </div>
             )}
             <Button className="mt-4 w-full" onClick={requestWithdrawal} disabled={withdrawBusy || coins < 1}>

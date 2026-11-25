@@ -22,6 +22,7 @@ type UserState = {
   initialized: boolean;
   userId: string | null;
   phoneNumber: string | null;
+  username: string | null;
   email: string | null;
   coins: number;
   gamesPlayed: number;
@@ -56,6 +57,7 @@ export const useUserStore = create<UserState>()(
       initialized: false,
       userId: null,
       phoneNumber: null,
+      username: null,
       email: null,
       coins: 0,
       gamesPlayed: 0,
@@ -97,6 +99,7 @@ export const useUserStore = create<UserState>()(
         set({
           userId: user.id,
           phoneNumber: profile.phone,
+          username: profile.username ?? null,
           email: profile.email,
           coins: profile.coins,
           gamesPlayed: profile.games_played,
@@ -207,7 +210,7 @@ export const useUserStore = create<UserState>()(
       signOutLocal: () =>
         set({
           userId: null,
-          phoneNumber: null,
+          phoneNumber: null, username: null,
           email: null,
           isAdmin: false,
           coins: 0,
@@ -223,7 +226,7 @@ export const useUserStore = create<UserState>()(
         set({
           initialized: false,
           userId: null,
-          phoneNumber: null,
+          phoneNumber: null, username: null,
           email: null,
           coins: 0,
           gamesPlayed: 0,

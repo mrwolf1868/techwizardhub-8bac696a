@@ -1,4 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,7 +18,17 @@ import ForgotPassword from "./pages/ForgotPassword.tsx";
 import Admin from "./pages/Admin.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
-const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, refetchOnWindowFocus: false } } });
+const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, gcTime: 24 * 60 * 60_000, refetchOnWindowFocus: false } } });
+
+// Remember public, non-personal data (site settings, service list) between visits so pages open instantly.
+const PERSISTED_KEYS = new Set(["app-settings", "service-catalog"]);
+const persister = typeof window === "undefined" ? undefined : createSyncStoragePersister({ storage: window.localStorage, key: "twp-cache" });
+const persistOptions = {
+  persister,
+  maxAge: 24 * 60 * 60_000,
+  buster: "v1",
+  dehydrateOptions: { shouldDehydrateQuery: (q: { queryKey: readonly unknown[]; state: { status: string } }) => q.state.status === "success" && PERSISTED_KEYS.has(String(q.queryKey[0])) },
+};
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -39,13 +51,13 @@ const router = createBrowserRouter(
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
     <TooltipProvider>
       <Toaster />
       <Sonner position="top-center" richColors />
       <RouterProvider router={router} />
     </TooltipProvider>
-  </QueryClientProvider>
+  </PersistQueryClientProvider>
 );
 
 export default App;

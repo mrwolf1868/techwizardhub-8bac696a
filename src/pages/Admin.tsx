@@ -350,7 +350,7 @@ const Dashboard = ({
         <StatCard label="Live matches" value={liveMatches} icon={Swords} tone="win" />
         <StatCard label="Waiting matches" value={waitingMatches} icon={Swords} tone="coin" />
         <StatCard label="Coins in play" value={ksh(staked)} icon={Wallet} tone="primary" />
-        <StatCard label="Profit available" value={ksh(profitSummary.available)} icon={Wallet} tone="coin" />
+        <StatCard label="Your wallet" value={ksh(profitSummary.available)} icon={Wallet} tone="coin" />
         <StatCard label="Events (24h)" value={activity.filter((a) => now - new Date(a.created_at).getTime() < DAY).length} icon={ActivityIcon} tone="coin" />
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -722,8 +722,7 @@ const WithdrawalsPanel = ({
   const recordProfitWithdrawal = async () => {
     const requested = Number(amount);
     const normalized = normalizePhone(phone);
-    if (!canWithdrawProfit(requested, profitSummary.available)) return toast.error("Enter an amount within the available profit");
-    if (requested < 10) return toast.error("The minimum payout is KSh 10");
+    if (!canWithdrawProfit(requested, profitSummary.available)) return toast.error("Enter an amount within your wallet balance");
     if (!normalized || !/^254[17]\d{8}$/.test(normalized)) return toast.error("Enter a valid Safaricom number");
     setSavingProfit(true);
     const failure = await callPayout({ action: "profit", amount: requested, phone: normalized });
@@ -760,13 +759,13 @@ const WithdrawalsPanel = ({
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard label="Fees earned" value={ksh(profitSummary.total_fees)} icon={TrendingUp} tone="win" />
         <StatCard label="Withdrawn" value={ksh(profitSummary.total_withdrawn)} icon={Wallet} tone="primary" />
-        <StatCard label="Available profit" value={ksh(profitSummary.available)} icon={Wallet} tone="coin" />
+        <StatCard label="Your wallet" value={ksh(profitSummary.available)} icon={Wallet} tone="coin" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="bg-gradient-card p-4">
-          <h2 className="font-display text-sm font-bold">Withdraw profit to M-Pesa</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Sends your earned fees (match fees and 2% withdrawal fees) to M-Pesa. Available profit drops only by the amount sent; failed payouts return to profit.</p>
+          <h2 className="font-display text-sm font-bold">Withdraw to M-Pesa</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Match fees and 2% withdrawal fees go straight into your wallet. Withdrawing sends money from your wallet to M-Pesa with no fee; a failed payout returns to your wallet.</p>
           <div className={`payout-setup mt-3 ${payoutReady ? "ready" : ""}`} role="status">
             {payoutReady === null ? "Checking payout setup…" : payoutReady ? "Payouts are ready." : payoutNote || "Payouts are not set up yet. Add your Mullahc keys in Settings; withdrawals are refused until then."}
           </div>
@@ -779,7 +778,7 @@ const WithdrawalsPanel = ({
               <label htmlFor="profit-amount" className="text-xs text-muted-foreground">Amount (KSh)</label>
               <Input id="profit-amount" type="number" min={1} max={profitSummary.available} value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-1" />
             </div>
-            <Button disabled={savingProfit || profitSummary.available < 10 || payoutReady === false} onClick={recordProfitWithdrawal}>
+            <Button disabled={savingProfit || profitSummary.available < 1 || payoutReady === false} onClick={recordProfitWithdrawal}>
               {savingProfit ? "Sending…" : "Withdraw to M-Pesa"}
             </Button>
           </div>
