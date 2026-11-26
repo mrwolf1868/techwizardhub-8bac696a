@@ -30,3 +30,8 @@
 - [x] Remember site settings and service list between visits for faster loading.
 - [ ] "Clear every user and start fresh" — waiting on what to remove.
 - [x] Math Quiz (staked duel + free practice vs an openly named Computer) and Coin Trade (fair TWC/KSh market, charts, drawing tools, SL/TP, house earns spread).
+
+## GitHub Pages readiness
+- [ ] Synchronize dependency lockfiles without changing declared package versions.
+- [ ] Verify GitHub Actions builds and deploys the `dist` artifact on pushes to `main`.
+- [ ] Confirm a clean npm install and production build succeed.
