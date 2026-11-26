@@ -29,4 +29,4 @@
 - [x] WhatsApp channel button in the top bar (link never shown).
 - [x] Remember site settings and service list between visits for faster loading.
 - [ ] "Clear every user and start fresh" — waiting on what to remove.
-- [ ] Math Quiz and Coin Trade — waiting on the user's choice of fair version (hidden bots and rigged markets refused).
+- [x] Math Quiz (staked duel + free practice vs an openly named Computer) and Coin Trade (fair TWC/KSh market, charts, drawing tools, SL/TP, house earns spread).

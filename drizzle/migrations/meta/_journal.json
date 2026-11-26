@@ -99,6 +99,27 @@
       "when": 1795617886633,
       "tag": "0013_math_quiz_and_coin_trade",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795662058541,
+      "tag": "0014_coin_market_catchup_limit",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1795662107576,
+      "tag": "0015_coin_market_round_prices",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795662184211,
+      "tag": "0016_coin_market_round_fix",
+      "breakpoints": true
     }
   ]
 }

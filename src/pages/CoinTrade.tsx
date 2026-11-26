@@ -61,7 +61,7 @@ const CoinTrade = () => {
   const [tab, setTab] = useState<"open" | "history">("open");
   const [edit, setEdit] = useState<{ id: string; sl: string; tp: string } | null>(null);
 
-  const box = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState<HTMLDivElement | null>(null);
   const chart = useRef<IChartApi | null>(null);
   const main = useRef<ISeriesApi<SeriesType> | null>(null);
   const extras = useRef<ISeriesApi<SeriesType>[]>([]);
@@ -109,8 +109,8 @@ const CoinTrade = () => {
 
   /* ---------- chart setup ---------- */
   useEffect(() => {
-    if (!box.current) return;
-    const c = createChart(box.current, {
+    if (!box) return;
+    const c = createChart(box, {
       autoSize: true,
       layout: { background: { type: ColorType.Solid, color: token("--chart-bg") }, textColor: token("--chart-text"), fontSize: 11, attributionLogo: false },
       grid: { vertLines: { color: token("--chart-grid") }, horzLines: { color: token("--chart-grid") } },
@@ -120,8 +120,9 @@ const CoinTrade = () => {
       localization: { priceFormatter: (p: number) => p.toFixed(3) },
     });
     chart.current = c;
+    fitted.current = false;
     return () => { c.remove(); chart.current = null; main.current = null; extras.current = []; };
-  }, []);
+  }, [box]);
 
   /* ---------- series, indicators, drawings and trade lines ---------- */
   useEffect(() => {
@@ -156,7 +157,7 @@ const CoinTrade = () => {
       const r = line(rsi(candles), token("--brand-pink"), 1);
       r.createPriceLine({ price: 70, color: token("--chart-text", 0.5), lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: false, title: "" });
       r.createPriceLine({ price: 30, color: token("--chart-text", 0.5), lineStyle: LineStyle.Dashed, lineWidth: 1, axisLabelVisible: false, title: "" });
-      c.panes()[1]?.setHeight(110);
+      c.panes()[0]?.setStretchFactor(3); c.panes()[1]?.setStretchFactor(1);
     }
 
     const snap = (t: number) => Math.floor(t / tf) * tf;
@@ -173,7 +174,7 @@ const CoinTrade = () => {
       if (p.tp != null) s.createPriceLine({ price: p.tp, color: token("--bull", 0.8), lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: true, title: "TP" });
     });
     if (!fitted.current && candles.length) { c.timeScale().setVisibleLogicalRange({ from: candles.length - 120, to: candles.length + 6 }); fitted.current = true; }
-  }, [candles, type, ind, drawings, positions, tf]);
+  }, [candles, type, ind, drawings, positions, tf, box]);
 
   useEffect(() => { fitted.current = false; }, [tf]);
 
@@ -195,7 +196,7 @@ const CoinTrade = () => {
     };
     c.subscribeCrosshairMove(move); c.subscribeClick(click);
     return () => { c.unsubscribeCrosshairMove(move); c.unsubscribeClick(click); };
-  }, [candles, tool]);
+  }, [candles, tool, box]);
 
   /* ---------- orders ---------- */
   const lotNum = Number.parseFloat(lots);
@@ -273,7 +274,7 @@ const CoinTrade = () => {
                 {tool !== "cursor" && <span className="text-warning">{tool === "hline" ? "Click the chart to place a line" : "Click two points on the chart"}</span>}
               </div>
             )}
-            <div ref={box} className={`trade-chart ${tool !== "cursor" ? "is-drawing" : ""}`} aria-label="TWC/KSh price chart" />
+            <div ref={setBox} className={`trade-chart ${tool !== "cursor" ? "is-drawing" : ""}`} aria-label="TWC/KSh price chart" />
           </div>
 
           <aside className="trade-panel space-y-3 p-3">

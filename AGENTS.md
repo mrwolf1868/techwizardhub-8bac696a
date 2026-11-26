@@ -14,3 +14,5 @@
 - Draw the black parts of game pieces as masked backgrounds and cream parts as vector fills, because phone browsers with forced dark mode invert dark vector fills to white.
 - Simple grid games (Tic-Tac-Toe, Connect Four) reuse the match record: the board is a string of "." / "w" (creator, cream) / "b" (opponent, black), and moves go through the same protected move function.
 - Only public, non-personal queries (site settings, service catalog) are persisted to localStorage for faster loads; never persist balances, messages or admin data.
+
+- Coin Trade prices are generated server-side by coin_sync, which catches up missed time in capped batches on each feed call and keeps numbers rounded; the chart only renders coin_feed candles, so the market is identical for everyone and never depends on player positions.
