@@ -5,8 +5,9 @@ import { AppLayout, PageSection } from "@/components/AppLayout";
 import { GAMES, GameArt, GameGrid } from "@/components/CatalogCards";
 import { GameChat } from "@/components/GameChat";
 import { RulesHelper } from "@/components/RulesHelper";
+import { QuizPractice } from "@/components/QuizBoard";
 import { useAppSettings } from "@/hooks/useAppSettings";
-import { initialGameState, isGameId, type GameId } from "@/lib/games";
+import { hasRulesHelper, initialGameState, isGameId, type GameId } from "@/lib/games";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -246,7 +247,8 @@ const Lobby = ({ game }: { game: GameId }) => {
         })}
         <p className="mt-3 text-xs text-muted-foreground">Entry fee: {entryFee(amount)} KSh per player · Charged only when an opponent joins.</p>
       </div>
-      <RulesHelper game={game} />
+      {hasRulesHelper(game) && <RulesHelper game={game} />}
+      {game === "quiz" && <QuizPractice />}
       <GameChat room={`lobby:${game}`} title={`${info.title} lobby chat`} />
     </PageSection>
   );

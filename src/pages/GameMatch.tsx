@@ -12,7 +12,8 @@ import {
 import { ChessPiece, DraughtPiece } from "@/components/GamePieces";
 import { GameChat } from "@/components/GameChat";
 import { RulesHelper } from "@/components/RulesHelper";
-import { C4_COLS, c4Drop, gameName, gridOutcome, isGameId, tttPlay } from "@/lib/games";
+import { QuizBoard } from "@/components/QuizBoard";
+import { C4_COLS, c4Drop, gameName, gridOutcome, hasRulesHelper, tttPlay } from "@/lib/games";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserStore } from "@/store/userStore";
 import { applyMove, legalMoves, Move, Side } from "@/lib/draughts";
@@ -160,7 +161,7 @@ const GameMatch = () => {
       : "This match is waiting for players"
     : m.status === "cancelled" ? "Match cancelled"
     : m.status === "finished" ? (m.winner_id ? (won ? `You won KSh ${winnerPayout(m.stake)}` : "You lost this match") : "Draw — stakes returned")
-    : myTurn ? "Your move" : "Opponent's move";
+    : m.game_type === "quiz" ? "Quiz in progress" : myTurn ? "Your move" : "Opponent's move";
 
   const mySwatch = side === "w" ? "light" : "dark";
   const oppSwatch = side === "w" ? "dark" : "light";
@@ -209,6 +210,7 @@ const GameMatch = () => {
                 <span><span className="player-swatch-piece" aria-hidden="true"><DraughtPiece color={oppSwatch === "light" ? "w" : "b"} king={false} /></span><span><strong>Opponent</strong><br /><small>Player {tag(opponentId)}</small></span></span>
                 {m.status === "active" && m.turn === opponentId && <span className="turn-pill">Thinking…</span>}
               </div>
+              {m.game_type === "quiz" ? <QuizBoard match={m} me={me} /> : (
               <div className={`board-frame ${grid ? `grid-frame ${m.game_type}-frame` : ""}`}>
                 {grid ? (
                   <div className={m.game_type === "tictactoe" ? "ttt-board" : "c4-board"}>
@@ -242,6 +244,7 @@ const GameMatch = () => {
                 </div>
                 )}
               </div>
+              )}
               <div className={`player-strip ${myTurn ? "is-turn" : ""}`}>
                 <span><span className="player-swatch-piece" aria-hidden="true"><DraughtPiece color={mySwatch === "light" ? "w" : "b"} king={false} /></span><span><strong>You</strong><br /><small>{side === "w" ? "Cream · moves first" : "Black"}</small></span></span>
                 {myTurn && <span className="turn-pill">Your move</span>}
@@ -253,7 +256,7 @@ const GameMatch = () => {
                 <h3>{gameTitle}</h3>
                 <div className={`status-line ${won ? "win" : lost ? "lose" : ""}`}>{won && <Trophy className="h-4 w-4" />}{status}</div>
                 {chess?.inCheck() && m.status === "active" && <p className="mt-2 text-sm font-semibold text-lose">Check</p>}
-                {m.status === "active" && <p className="mt-2 text-xs text-muted-foreground">{m.game_type === "tictactoe" ? "Tap an empty square. Three in a row wins." : m.game_type === "connect4" ? "Tap a column to drop your disc. Four in a line wins." : "Tap one of your pieces, then a highlighted square."}</p>}
+                {m.status === "active" && <p className="mt-2 text-xs text-muted-foreground">{m.game_type === "quiz" ? "Answer all 10 sums, then submit. Most correct wins; the faster player wins a tie." : m.game_type === "tictactoe" ? "Tap an empty square. Three in a row wins." : m.game_type === "connect4" ? "Tap a column to drop your disc. Four in a line wins." : "Tap one of your pieces, then a highlighted square."}</p>}
               </div>
               <div className="match-card">
                 <h3>Stake and prize</h3>
@@ -268,7 +271,7 @@ const GameMatch = () => {
                 <Button variant="destructive" className="mt-3 w-full" onClick={() => setConfirmOpen(true)}><Flag /> Quit match</Button>
               )}
               {isPlayer && m.status !== "waiting" && <GameChat room={`match:${m.id}`} title="Match chat" labelFor={() => "Opponent"} />}
-              {isGameId(m.game_type) && <RulesHelper game={m.game_type} />}
+              {hasRulesHelper(m.game_type) && <RulesHelper game={m.game_type} />}
               {m.status !== "active" && m.status !== "waiting" && (
                 <Button className="mt-3 w-full" onClick={() => navigate(`/games/${m.game_type}`)}>Play again</Button>
               )}

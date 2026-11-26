@@ -16,6 +16,7 @@ import Login from "./pages/Login.tsx";
 import Register from "./pages/Register.tsx";
 import ForgotPassword from "./pages/ForgotPassword.tsx";
 import Admin from "./pages/Admin.tsx";
+import CoinTrade from "./pages/CoinTrade.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, gcTime: 24 * 60 * 60_000, refetchOnWindowFocus: false } } });
@@ -40,6 +41,7 @@ const router = createBrowserRouter(
       <Route path="/games" element={<Games />} />
       <Route path="/games/match/:id" element={<GameMatch />} />
       <Route path="/games/:game" element={<Games />} />
+      <Route path="/trade" element={<CoinTrade />} />
       <Route path="/services" element={<Services />} />
       <Route path="/s/:slug" element={<ServiceLauncher />} />
       <Route path="/buy" element={<Buy />} />

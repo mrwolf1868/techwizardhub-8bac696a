@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, CircleDot, Columns3, Crown, Hash, Lock, type LucideIcon } from "lucide-react";
+import { ArrowRight, Calculator, CandlestickChart, CircleDot, Columns3, Crown, Hash, Lock, type LucideIcon } from "lucide-react";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { DraughtPiece } from "@/components/GamePieces";
 import type { GameId } from "@/lib/games";
@@ -14,13 +14,15 @@ import smsPromo from "@/assets/sms-promotion.png.asset.json";
 
 export type { GameId } from "@/lib/games";
 
-export type GameInfo = { id: GameId; title: string; tag: string; image?: string; icon: LucideIcon; text: string };
+export type GameInfo = { id: GameId | "cointrade"; href?: string; title: string; tag: string; image?: string; icon: LucideIcon; text: string };
 
 export const GAMES: GameInfo[] = [
   { id: "draughts", title: "Draft", tag: "2 PLAYERS", image: draftImage.url, icon: CircleDot, text: "Challenge another player and compete head-to-head in a fast match." },
   { id: "chess", title: "Chess", tag: "ONLINE CHESS", image: chessImage.url, icon: Crown, text: "Enter the board, find an opponent and play a competitive game." },
   { id: "tictactoe", title: "Tic-Tac-Toe", tag: "QUICK MATCH", icon: Hash, text: "Line up three in a row before your opponent. Matches take about a minute." },
   { id: "connect4", title: "Connect Four", tag: "STRATEGY", icon: Columns3, text: "Drop discs into the grid and connect four in a line to win the pot." },
+  { id: "quiz", title: "Math Quiz", tag: "BRAIN DUEL", icon: Calculator, text: "Both players get the same 10 sums. Most correct answers wins; the faster player wins a tie." },
+  { id: "cointrade", href: "/trade", title: "Coin Trade", tag: "TWC / KSH MARKET", icon: CandlestickChart, text: "Trade the TECHWOLF coin against the shilling with live charts, stop loss and take profit." },
 ];
 
 const C4_ART = "......." + "...b..." + "..wbw.." + ".bwwbw.";
@@ -75,7 +77,7 @@ export const GameGrid = () => {
               <p>{game.text}</p>
               {locked
                 ? <Button variant="secondary" disabled><Lock />Temporarily locked</Button>
-                : <Button onClick={() => navigate(`/games/${game.id}`)}>Enter Match<ArrowRight /></Button>}
+                : <Button onClick={() => navigate(game.href ?? `/games/${game.id}`)}>{game.href ? "Open market" : "Enter Match"}<ArrowRight /></Button>}
             </div>
           </article>
         );

@@ -1,17 +1,20 @@
 import { Chess } from "chess.js";
 import { initialDraughts } from "./draughts";
 
-export type GameId = "chess" | "draughts" | "tictactoe" | "connect4";
+export type GameId = "chess" | "draughts" | "tictactoe" | "connect4" | "quiz";
+/** Games the AI rules helper explains. */
+export type RulesGame = Exclude<GameId, "quiz">;
+export const hasRulesHelper = (id: string): id is RulesGame => ["chess", "draughts", "tictactoe", "connect4"].includes(id);
 export type Seat = "w" | "b"; // w = match creator (cream, moves first), b = opponent (black)
 
-export const GAME_IDS: GameId[] = ["chess", "draughts", "tictactoe", "connect4"];
+export const GAME_IDS: GameId[] = ["chess", "draughts", "tictactoe", "connect4", "quiz"];
 export const isGameId = (value: string | undefined): value is GameId => !!value && (GAME_IDS as string[]).includes(value);
 
-const NAMES: Record<GameId, string> = { chess: "Chess", draughts: "Draughts", tictactoe: "Tic-Tac-Toe", connect4: "Connect Four" };
-export const gameName = (id: string) => NAMES[id as GameId] ?? id;
+const NAMES = { chess: "Chess", draughts: "Draughts", tictactoe: "Tic-Tac-Toe", connect4: "Connect Four", quiz: "Math Quiz", cointrade: "Coin Trade" } as Record<string, string>;
+export const gameName = (id: string) => NAMES[id] ?? id;
 
 export const initialGameState = (game: GameId) =>
-  game === "chess" ? new Chess().fen() : game === "draughts" ? initialDraughts() : game === "tictactoe" ? ".".repeat(9) : ".".repeat(42);
+  game === "quiz" ? "{}" : game === "chess" ? new Chess().fen() : game === "draughts" ? initialDraughts() : game === "tictactoe" ? ".".repeat(9) : ".".repeat(42);
 
 /* ---------- Tic-Tac-Toe: 9 cells, "." empty ---------- */
 const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];

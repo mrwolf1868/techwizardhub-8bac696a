@@ -3,9 +3,9 @@ import { BookOpen, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { gameName, type GameId } from "@/lib/games";
+import { gameName, type RulesGame } from "@/lib/games";
 
-const SUGGESTIONS: Record<GameId, string[]> = {
+const SUGGESTIONS: Record<RulesGame, string[]> = {
   chess: ["How does castling work?", "What is en passant?", "What counts as a draw?"],
   draughts: ["Do I have to capture?", "How does a piece become a king?", "Can I jump more than once?"],
   tictactoe: ["Who moves first?", "What happens if the board fills up?"],
@@ -13,7 +13,7 @@ const SUGGESTIONS: Record<GameId, string[]> = {
 };
 
 /** Ask an AI-powered helper about a game's rules. Repeated questions are answered from saved explanations. */
-export const RulesHelper = ({ game }: { game: GameId }) => {
+export const RulesHelper = ({ game }: { game: RulesGame }) => {
   const [question, setQuestion] = useState("");
   const [asked, setAsked] = useState<string | null>(null);
   const [answer, setAnswer] = useState<string | null>(null);

@@ -19,6 +19,7 @@
     --brand-pink: 37 71% 56%; --overlay: 220 14% 7%;
     --coin: 42 76% 61%; --coin-foreground: 220 14% 7%;
     --win: 152 47% 49%; --lose: 0 68% 56%;
+    --bull: 211 92% 58%; --bear: 0 74% 57%; --chart-bg: 220 14% 8%; --chart-grid: 220 9% 15%; --chart-text: 220 5% 62%;
     --board-light: 34 42% 70%; --board-dark: 25 34% 42%; --piece-light: 46 92% 91%; --piece-light-edge: 38 40% 70%; --piece-dark: 0 0% 0%; --piece-outline: 0 0% 0%; --board-frame: 25 30% 22%;
     --board-selection: 48 100% 60%; --board-target: 48 100% 45%;
     --piece-shadow: 0 2px 3px hsl(var(--background) / .45);
@@ -372,3 +373,48 @@
 .whatsapp-button { color:hsl(var(--win)); }
 .username-form { display:flex; gap:8px; margin-top:12px; }
 .profile-wallet-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0; }
+
+/* Math Quiz */
+.quiz-card { border:1px solid hsl(var(--border)); background:hsl(var(--card)); border-radius:var(--radius); padding:16px; }
+.quiz-card h3 { display:flex; align-items:center; gap:8px; font-weight:700; }
+.quiz-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
+.quiz-timer { display:inline-flex; align-items:center; gap:6px; font-variant-numeric:tabular-nums; font-weight:700; padding:4px 10px; border-radius:999px; background:hsl(var(--muted)); }
+.quiz-timer.is-low { color:hsl(var(--lose)); }
+.quiz-list { display:grid; gap:8px; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); }
+.quiz-list li { display:grid; grid-template-columns:28px 1fr 96px; align-items:center; gap:8px; }
+.quiz-num { width:26px; height:26px; display:grid; place-items:center; border-radius:6px; background:hsl(var(--muted)); font-size:12px; color:hsl(var(--muted-foreground)); }
+.quiz-sum { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; }
+.quiz-wait { margin-top:12px; font-size:14px; color:hsl(var(--muted-foreground)); }
+.quiz-scores { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+.quiz-scores > div { border:1px solid hsl(var(--border)); border-radius:var(--radius); padding:12px; display:grid; gap:2px; }
+.quiz-scores small { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:hsl(var(--muted-foreground)); }
+.quiz-scores strong { font-size:24px; } .quiz-scores span { font-size:12px; color:hsl(var(--muted-foreground)); }
+.game-art-quiz svg, .game-art-cointrade svg { width:56px; height:56px; color:hsl(var(--primary)); }
+
+/* Coin Trade */
+.trade-shell { display:grid; gap:12px; }
+@media (min-width:1024px){ .trade-shell { grid-template-columns:minmax(0,1fr) 320px; } }
+.trade-panel { border:1px solid hsl(var(--border)); background:hsl(var(--card)); border-radius:var(--radius); }
+.trade-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:4px; padding:6px; border-bottom:1px solid hsl(var(--border)); }
+.trade-toolbar .sep { width:1px; height:20px; background:hsl(var(--border)); margin:0 4px; }
+.tb-btn { height:28px; min-width:28px; padding:0 8px; border-radius:4px; font-size:12px; font-weight:600; color:hsl(var(--chart-text)); display:inline-flex; align-items:center; justify-content:center; gap:4px; }
+.tb-btn:hover { background:hsl(var(--muted)); color:hsl(var(--foreground)); }
+.tb-btn.is-on { background:hsl(var(--accent)); color:hsl(var(--accent-foreground)); }
+.tb-btn svg { width:15px; height:15px; }
+.trade-legend { display:flex; flex-wrap:wrap; gap:10px; padding:6px 10px; font-size:12px; font-variant-numeric:tabular-nums; color:hsl(var(--chart-text)); }
+.trade-legend strong { color:hsl(var(--foreground)); }
+.trade-chart { height:460px; background:hsl(var(--chart-bg)); position:relative; }
+@media (max-width:640px){ .trade-chart { height:340px; } }
+.trade-chart.is-drawing { cursor:crosshair; }
+.up { color:hsl(var(--bull)); } .down { color:hsl(var(--bear)); }
+.quote-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.quote-btn { border-radius:var(--radius); padding:10px; text-align:left; font-weight:700; color:hsl(var(--primary-foreground)); }
+.quote-btn small { display:block; font-size:11px; font-weight:600; opacity:.85; text-transform:uppercase; letter-spacing:.08em; }
+.quote-btn span { font-size:20px; font-variant-numeric:tabular-nums; }
+.quote-btn.sell { background:hsl(var(--bear)); } .quote-btn.buy { background:hsl(var(--bull)); }
+.quote-btn:disabled { opacity:.5; }
+.trade-field { display:grid; gap:4px; } .trade-field label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:hsl(var(--muted-foreground)); }
+.trade-table { width:100%; font-size:12px; font-variant-numeric:tabular-nums; }
+.trade-table th { text-align:left; font-weight:600; color:hsl(var(--muted-foreground)); padding:6px 8px; border-bottom:1px solid hsl(var(--border)); white-space:nowrap; }
+.trade-table td { padding:6px 8px; border-bottom:1px solid hsl(var(--border) / .5); white-space:nowrap; }
+.side-tag { font-weight:700; text-transform:uppercase; } .side-tag.buy { color:hsl(var(--bull)); } .side-tag.sell { color:hsl(var(--bear)); }
