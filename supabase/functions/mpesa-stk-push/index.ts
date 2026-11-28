@@ -1,3 +1,4 @@
+import { loadStkConfig } from "../_shared/stkConfig.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js/cors";
 import { createClient } from "npm:@supabase/supabase-js";
 
@@ -25,10 +26,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { phone, amount, clientId } = await req.json();
+    if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+    const raw = await req.text();
+    if (raw.length > 4096) return new Response("Invalid request", { status: 400, headers: corsHeaders });
+    const { phone, amount } = JSON.parse(raw);
+    const clientId = crypto.randomUUID();
 
     const normalized = normalizePhone(String(phone || ""));
-    const amt = parseInt(String(amount), 10);
+    const amt = typeof amount === "number" && Number.isInteger(amount) ? amount : NaN;
 
     if (!normalized) {
       return new Response(JSON.stringify({ error: "Invalid phone. Use a valid Safaricom number (2547XXXXXXXX)." }), {
@@ -83,40 +88,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Load credentials from admin_settings (env as fallback)
-    let consumerKey = Deno.env.get("MPESA_CONSUMER_KEY") ?? "";
-    let consumerSecret = Deno.env.get("MPESA_CONSUMER_SECRET") ?? "";
-    let passkey = Deno.env.get("MPESA_PASSKEY") ?? "";
-    // BusinessShortCode (Head Office / Store Number) used for Lipa Na M-Pesa Online auth
-    let shortcode = Deno.env.get("MPESA_SHORTCODE") ?? "";
-    // Till number (PartyB) where money settles. For BuyGoods, this is required.
-    let tillNumber = Deno.env.get("MPESA_TILL") ?? "";
-    let mpesaEnv: "sandbox" | "production" =
-      Deno.env.get("MPESA_ENV") === "production" ? "production" : "sandbox";
-
-    try {
-      const { data: rows } = await supabase
-        .from("admin_settings")
-        .select("key, value")
-        .in("key", [
-          "mpesa_shortcode",
-          "mpesa_till",
-          "mpesa_consumer_key",
-          "mpesa_consumer_secret",
-          "mpesa_passkey",
-          "mpesa_env",
-        ]);
-      const map: Record<string, string> = {};
-      (rows || []).forEach((r: { key: string; value: unknown }) => {
-        map[r.key] = typeof r.value === "string" ? r.value : String(r.value ?? "");
-      });
-      if (map.mpesa_shortcode && /^\d{4,10}$/.test(map.mpesa_shortcode)) shortcode = map.mpesa_shortcode;
-      if (map.mpesa_till && /^\d{4,10}$/.test(map.mpesa_till)) tillNumber = map.mpesa_till;
-      if (map.mpesa_consumer_key) consumerKey = map.mpesa_consumer_key;
-      if (map.mpesa_consumer_secret) consumerSecret = map.mpesa_consumer_secret;
-      if (map.mpesa_passkey) passkey = map.mpesa_passkey;
-      if (map.mpesa_env === "production" || map.mpesa_env === "sandbox") mpesaEnv = map.mpesa_env;
-    } catch (_) { /* keep env fallback */ }
+    const { consumerKey, consumerSecret, passkey, shortcode, tillNumber, mpesaEnv } = await loadStkConfig(supabase);
 
     if (!consumerKey || !consumerSecret || !passkey || !shortcode || !tillNumber) {
       return new Response(JSON.stringify({
@@ -133,8 +105,7 @@ Deno.serve(async (req) => {
     const auth = btoa(`${consumerKey}:${consumerSecret}`);
     const tokenResp = await fetch(OAUTH_URL, { headers: { Authorization: `Basic ${auth}` } });
     if (!tokenResp.ok) {
-      const t = await tokenResp.text();
-      console.error("OAuth failed:", t);
+      console.error("Payment authentication failed", tokenResp.status);
       return new Response(JSON.stringify({ error: "Payment service unavailable" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -176,7 +147,7 @@ Deno.serve(async (req) => {
     });
 
     const stkData = await stkResp.json();
-    console.log("STK response:", stkData);
+
 
     if (!stkResp.ok || stkData.errorCode) {
       return new Response(
@@ -198,7 +169,7 @@ Deno.serve(async (req) => {
       user_id: userId,
     });
 
-    if (insErr) console.error("Insert error:", insErr);
+    if (insErr) throw new Error("Could not record pending payment");
 
     return new Response(
       JSON.stringify({
@@ -209,7 +180,7 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
-    console.error("STK push error:", e);
+    console.error("STK push request failed");
     return new Response(JSON.stringify({ error: "Something went wrong. Please try again." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

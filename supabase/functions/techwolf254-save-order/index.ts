@@ -23,8 +23,8 @@ Deno.serve(async (req) => {
     if (!ud?.user) return json({ error: "Invalid token" }, 401);
 
     const description = String(body.description || "Service order").slice(0, 240);
-    const amount = Math.max(0, Math.min(1_000_000, Number(body.amount) || 0));
-    const type = String(body.type || "deploy");
+    const amount = 0;
+    const type = "service_order";
 
     const { data, error } = await sb
       .from("transactions")

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Rocket, Mail, KeyRound, Lock } from "lucide-react";
+import { Mail, KeyRound, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 const ForgotPassword = () => {
@@ -21,11 +21,11 @@ const ForgotPassword = () => {
     const mail = email.trim().toLowerCase();
     if (!mail) return toast.error("Enter your email");
     setLoading(true);
-    const { error } = await supabase.functions.invoke("password-reset-request", {
+    const { data, error } = await supabase.functions.invoke("password-reset-request", {
       body: { email: mail },
     });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error || data?.error) return toast.error(data?.error || error?.message);
     toast.success("📧 Code sent — check your email");
     setStep("code");
   };
@@ -35,24 +35,21 @@ const ForgotPassword = () => {
     if (!/^\d{6}$/.test(code)) return toast.error("Enter the 6-digit code");
     if (newPassword.length < 6) return toast.error("Password too short");
     setLoading(true);
-    const { error } = await supabase.functions.invoke("password-reset-confirm", {
+    const { data, error } = await supabase.functions.invoke("password-reset-confirm", {
       body: { email: email.trim().toLowerCase(), code, newPassword },
     });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error || data?.error) return toast.error(data?.error || error?.message);
     toast.success("✅ Password updated — log in with your new password");
     navigate("/login");
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm border-primary/30 bg-gradient-card p-6 shadow-glow">
-        <div className="mb-5 flex items-center gap-2">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-primary shadow-glow">
-            <Rocket className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
-          </div>
+    <div className="auth-shell">
+      <Card className="auth-panel">
+        <div className="auth-wordmark">
           <h1 className="font-display text-2xl font-black">
-            <span className="text-gradient-primary">TECHWOLF</span>pro
+            <span className="text-primary">TECHWOLF</span>pro
           </h1>
         </div>
         <h2 className="font-display text-xl font-bold">Reset password</h2>

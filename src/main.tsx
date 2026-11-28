@@ -2,4 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Remove previously persisted private account state; only public catalogs may be cached.
+window.localStorage.removeItem("techwizard-hub-user");
+const root = document.getElementById("root");
+if (root) createRoot(root).render(<App />);

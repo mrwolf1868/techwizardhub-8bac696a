@@ -74,11 +74,6 @@ const ServiceLauncher = () => {
       setIframeUrl(url);
       setLoading(false);
 
-      // Record usage start (best-effort)
-      await supabase.from("service_usage").insert({
-        user_id: session.user.id,
-        service_key: slug,
-      });
     })();
     return () => { active = false; };
   }, [slug, navigate]);
@@ -99,9 +94,7 @@ const ServiceLauncher = () => {
     setPaying(true);
     const { data, error } = await supabase.functions.invoke("techwolf254-deduct-wallet", {
       body: {
-        amount: cost,
-        type: "service",
-        description: `Continue: ${child.name}`,
+        child_slug: child.slug,
       },
     });
     setPaying(false);

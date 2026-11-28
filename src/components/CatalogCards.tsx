@@ -11,6 +11,7 @@ import chessImage from "@/assets/chess-game.png.asset.json";
 import virtualNumbers from "@/assets/virtual-numbers.png.asset.json";
 import numbersPromo from "@/assets/numbers-promotion.jpg.asset.json";
 import smsPromo from "@/assets/sms-promotion.png.asset.json";
+import { AssetImage } from "@/components/AssetImage";
 
 export type { GameId } from "@/lib/games";
 
@@ -70,7 +71,7 @@ export const GameGrid = () => {
         const Icon = game.icon;
         return (
           <article className={`game-tile${locked ? " is-locked" : ""}`} key={game.id}>
-            {game.image ? <img src={game.image} alt={`${game.title} board`} /> : <GameArt game={game} className="tile-art" />}
+            {game.image ? <AssetImage src={game.image} alt={`${game.title} board`} fallback={<GameArt game={game} className="tile-art" />} /> : <GameArt game={game} className="tile-art" />}
             <div className="game-copy">
               <span className="eyebrow game-tag"><Icon className="h-3.5 w-3.5" />{game.tag}</span>
               <h3>{game.title}</h3>
@@ -94,7 +95,7 @@ export const ServiceGrid = ({ items, loading }: { items: ServiceItem[]; loading:
     <div className="service-grid">
       {items.map((service, i) => (
         <article className="service-tile" key={service.id} onClick={() => navigate(`/s/${service.slug}`)}>
-          <img src={SERVICE_IMAGES[i % SERVICE_IMAGES.length]} alt={service.name} />
+          <AssetImage src={SERVICE_IMAGES[i % SERVICE_IMAGES.length]} alt={service.name} loading="lazy" fallback={<div className="service-art" aria-hidden="true"><ArrowRight /></div>} />
           <div>
             <h3>{service.name}</h3>
             <p>{service.description || "Open this service inside TECHWOLFpro."}</p>

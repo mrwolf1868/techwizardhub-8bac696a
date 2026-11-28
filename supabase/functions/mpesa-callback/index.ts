@@ -1,102 +1,24 @@
-import { corsHeaders } from "npm:@supabase/supabase-js/cors";
-import { createClient } from "npm:@supabase/supabase-js";
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
-  try {
-    const body = await req.json();
-    console.log("M-Pesa callback received:", JSON.stringify(body));
-
-    const stk = body?.Body?.stkCallback;
-    if (!stk) {
-      return new Response(JSON.stringify({ ResultCode: 0, ResultDesc: "Accepted" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const checkoutRequestId = stk.CheckoutRequestID as string;
-    const resultCode = stk.ResultCode as number;
-    const resultDesc = stk.ResultDesc as string;
-
-    let receipt: string | null = null;
-    if (resultCode === 0 && Array.isArray(stk.CallbackMetadata?.Item)) {
-      const item = stk.CallbackMetadata.Item.find((i: { Name?: string }) => i.Name === "MpesaReceiptNumber");
-      receipt = item?.Value ? String(item.Value) : null;
-    }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    const newStatus = resultCode === 0 ? "success" : "failed";
-
-    // Load the transaction first so we can credit the user atomically
-    const { data: tx } = await supabase
-      .from("mpesa_transactions")
-      .select("id, user_id, amount, status, coins_credited")
-      .eq("checkout_request_id", checkoutRequestId)
-      .maybeSingle();
-
-    const { error: updErr } = await supabase
-      .from("mpesa_transactions")
-      .update({
-        status: newStatus,
-        mpesa_receipt: receipt,
-        result_desc: resultDesc,
-      })
-      .eq("checkout_request_id", checkoutRequestId);
-
-    if (updErr) console.error("Update error:", updErr);
-
-    // Only grant coins if payment is confirmed successful AND not already credited
-    if (newStatus === "success" && tx && tx.user_id && !tx.coins_credited) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("coins")
-        .eq("user_id", tx.user_id)
-        .maybeSingle();
-
-      const currentCoins = profile?.coins ?? 0;
-      const newCoins = currentCoins + tx.amount;
-
-      const { error: profErr } = await supabase
-        .from("profiles")
-        .update({ coins: newCoins })
-        .eq("user_id", tx.user_id);
-
-      if (!profErr) {
-        await supabase.from("transactions").insert({
-          user_id: tx.user_id,
-          type: "purchase",
-          amount: tx.amount,
-          description: `M-Pesa ${tx.amount} KES${receipt ? ` · ${receipt}` : ""}`,
-        });
-        await supabase
-          .from("mpesa_transactions")
-          .update({ coins_credited: true })
-          .eq("id", tx.id);
-        await supabase.from("activity_logs").insert({
-          user_id: tx.user_id,
-          event: "purchase",
-          detail: `Credited ${tx.amount} coins (M-Pesa ${receipt ?? "—"})`,
-        });
-      } else {
-        console.error("Profile credit error:", profErr);
-      }
-    }
-
-    return new Response(JSON.stringify({ ResultCode: 0, ResultDesc: "Accepted" }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (e) {
-    console.error("Callback error:", e);
-    return new Response(JSON.stringify({ ResultCode: 0, ResultDesc: "Accepted" }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { queryStkResult } from "../_shared/stkConfig.ts";
+const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...corsHeaders,"Content-Type":"application/json"}});
+Deno.serve(async req=>{
+ if(req.method==="OPTIONS")return new Response("ok",{headers:corsHeaders});
+ if(req.method!=="POST")return json({error:"POST only"},405);
+ try{
+  const raw=await req.text();if(raw.length>16384)return json({error:"Invalid callback"},400);
+  const callback=JSON.parse(raw)?.Body?.stkCallback;
+  if(typeof callback?.CheckoutRequestID!=="string" || callback.CheckoutRequestID.length>200)return json({ResultCode:0,ResultDesc:"Accepted"});
+  const admin=createClient(Deno.env.get("SUPABASE_URL") ?? "",Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  const {data:tx}=await admin.from("mpesa_transactions").select("id,status,phone,amount").eq("checkout_request_id",callback.CheckoutRequestID).maybeSingle();
+  if(!tx || tx.status!=="pending")return json({ResultCode:0,ResultDesc:"Accepted"});
+  // A callback is untrusted. Verify the checkout directly with Daraja before any wallet movement.
+  const result=await queryStkResult(admin,callback.CheckoutRequestID);
+  if(result===null)return json({error:"Confirmation pending"},503);
+  const receiptItem=Array.isArray(callback.CallbackMetadata?.Item)?callback.CallbackMetadata.Item.find((x:any)=>x.Name==="MpesaReceiptNumber"):null;
+  const receipt=typeof receiptItem?.Value==="string"?receiptItem.Value.slice(0,100):null;
+  const {error}=await admin.rpc("confirm_stk_deposit",{_checkout:callback.CheckoutRequestID,_success:result===0,_receipt:receipt,_description:result===0?"Payment confirmed by Daraja":"Payment failed"});
+  if(error)return json({error:"Confirmation pending"},503);
+  return json({ResultCode:0,ResultDesc:"Accepted"});
+ }catch{return json({error:"Confirmation pending"},503);}
 });

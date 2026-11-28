@@ -1,4 +1,13 @@
 # Requested changes
+## Premium redesign and security
+- [ ] Remove rocket badges, refresh screen styling, and repair missing catalog/banner media.
+- [ ] Restrict data access, remove frontend credential reads, secure admin entry, and retain server-only STK payments.
+- [ ] Add a server-checked access-password gate (waiting on secure password setup).
+- [ ] Email-code login and Techwolf verification — waiting on account-data answer and owned sender domain.
+- [ ] Four-attempt / 24-hour password lockout — waiting on acceptance of platform limitation.
+- [ ] Automatically submit quiz answers when the timer ends and verify results.
+- [ ] Remove credential-bearing README and add repository security checks; public visibility/history cleanup require repository owner.
+
 - [x] Pure black and cream vector pieces for chess and draughts.
 - [x] Searches cost nothing; both players are charged when an opponent joins; online players get a Join notification.
 - [x] Confirm before leaving a search or quitting a match, with a forfeit warning.

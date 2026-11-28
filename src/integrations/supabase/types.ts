@@ -41,6 +41,24 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_access_sessions: {
+        Row: {
+          expires_at: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          expires_at: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          expires_at?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_profit_withdrawals: {
         Row: {
           amount: number
@@ -879,6 +897,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_access_verified: { Args: never; Returns: boolean }
       admin_adjust_user_coins: {
         Args: { _delta: number; _user_id: string }
         Returns: undefined
@@ -908,7 +927,21 @@ export type Database = {
         Args: { _balance: number; _user_id: string }
         Returns: undefined
       }
+      apply_verified_game_move: {
+        Args: {
+          _id: string
+          _next: string
+          _previous: string
+          _result: string
+          _uid: string
+        }
+        Returns: undefined
+      }
       can_access_chat_room: { Args: { _room: string }; Returns: boolean }
+      charge_service_continuation: {
+        Args: { _slug: string; _uid: string }
+        Returns: number
+      }
       coin_check_positions: { Args: never; Returns: undefined }
       coin_close: { Args: { _id: string }; Returns: undefined }
       coin_feed: {
@@ -940,6 +973,15 @@ export type Database = {
         Returns: undefined
       }
       coin_sync: { Args: never; Returns: undefined }
+      confirm_stk_deposit: {
+        Args: {
+          _checkout: string
+          _description: string
+          _receipt: string
+          _success: boolean
+        }
+        Returns: string
+      }
       game_charge_entry: {
         Args: { _game: string; _stake: number; _uid: string }
         Returns: undefined

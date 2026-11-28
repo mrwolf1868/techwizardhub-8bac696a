@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Rocket, Phone, Lock, Mail } from "lucide-react";
+import { Phone, Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -62,14 +62,11 @@ const Register = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm border-primary/30 bg-gradient-card p-6 shadow-glow">
-        <div className="mb-5 flex items-center gap-2">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-primary shadow-glow">
-            <Rocket className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
-          </div>
+    <div className="auth-shell">
+      <Card className="auth-panel">
+        <div className="auth-wordmark">
           <h1 className="font-display text-2xl font-black">
-            <span className="text-gradient-primary">TECHWOLF</span>pro
+            <span className="text-primary">TECHWOLF</span>pro
           </h1>
         </div>
         <h2 className="font-display text-xl font-bold">Create account</h2>

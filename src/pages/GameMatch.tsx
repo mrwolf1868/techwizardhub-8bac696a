@@ -77,8 +77,8 @@ const GameMatch = () => {
   const send = async (state: string, result: string) => {
     if (!m) return;
     setSel(null);
-    const { error } = await supabase.rpc("game_move", { _id: m.id, _state: state, _result: result });
-    if (error) toast.error(error.message);
+    const { data, error } = await supabase.functions.invoke("game-move", { body: { id: m.id, state } });
+    if (error || data?.error) toast.error(data?.error || "Could not play this move");
   };
 
   const sqName = (i: number) => ("abcdefgh"[i % 8] + (8 - Math.floor(i / 8))) as Square;

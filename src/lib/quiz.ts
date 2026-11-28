@@ -2,6 +2,9 @@ export type QuizQuestion = [number, "+" | "-" | "x", number];
 /** Seconds players get to answer; the server ignores answers sent after 95s. */
 export const QUIZ_SECONDS = 90;
 
+export const shouldAutoSubmitQuiz = (secondsLeft: number, active: boolean, submitted: boolean, busy: boolean) =>
+  active && secondsLeft === 0 && !submitted && !busy;
+
 export const quizAnswer = ([a, op, b]: QuizQuestion) => (op === "+" ? a + b : op === "-" ? a - b : a * b);
 
 /** Same shape the server uses: additions, subtractions with non-negative results, and times tables. */

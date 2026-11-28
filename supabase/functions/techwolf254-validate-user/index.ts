@@ -51,7 +51,6 @@ Deno.serve(async (req) => {
       email: profile.email,
       balance: profile.coins,
       referral_code: profile.referral_code,
-      auth_token: userJwt,
     });
   } catch (e) {
     return json({ error: String(e?.message || e) }, 500);

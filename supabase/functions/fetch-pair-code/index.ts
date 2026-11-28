@@ -65,6 +65,9 @@ Deno.serve(async (req) => {
     }
   } catch (_) { /* ignore */ }
 
+  if (!userId) return new Response(JSON.stringify({ error: "Please sign in" }), {
+    status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
   try {
     const { phone } = await req.json().catch(() => ({ phone: "" }));
     const digits = onlyDigits(String(phone || ""));

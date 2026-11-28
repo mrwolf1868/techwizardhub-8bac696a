@@ -13,6 +13,10 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+    const auth = req.headers.get("Authorization");
+    if (!auth?.startsWith("Bearer ")) return json({ error: "Please sign in" }, 401);
+    const { data: { user } } = await sb.auth.getUser(auth.slice(7));
+    if (!user) return json({ error: "Please sign in" }, 401);
     let key = "";
     if (req.method === "POST") {
       const b = await req.json().catch(() => ({}));

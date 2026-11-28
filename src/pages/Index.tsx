@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AppLayout, formatKsh } from "@/components/AppLayout";
-import { GAMES, GameGrid, ServiceGrid, useServices } from "@/components/CatalogCards";
+import { GAMES, GameArt, GameGrid, ServiceGrid, useServices } from "@/components/CatalogCards";
+import { AssetImage } from "@/components/AssetImage";
 import { useUserStore } from "@/store/userStore";
 import draftHero from "@/assets/draft-promotion.jpg.asset.json";
 import chessHero from "@/assets/chess-promotion.jpg.asset.json";
@@ -25,7 +26,9 @@ const Index = () => {
     <AppLayout>
       <section className="promotion" aria-label="TECHWOLFpro promotions">
         {slides.map((asset, i) => (
-          <img key={asset.asset_id} src={asset.url} alt={slideAlt[i]} className={slide === i ? "promotion-slide is-active" : "promotion-slide"} />
+          <div key={asset.asset_id} className={slide === i ? "promotion-slide is-active" : "promotion-slide"}>
+            <AssetImage src={asset.url} alt={slideAlt[i]} className="h-full w-full object-cover" fallback={<div className="promotion-fallback"><div><h2>TECHWOLFpro</h2><Button onClick={() => window.location.assign("/games")}>Games</Button></div><GameArt game={GAMES[i % 2]} /></div>} />
+          </div>
         ))}
         <div className="slide-dots">
           {slides.map((_, i) => (

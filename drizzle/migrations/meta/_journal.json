@@ -120,6 +120,13 @@
       "when": 1795662184211,
       "tag": "0016_coin_market_round_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795848338039,
+      "tag": "0017_protect_wallets_credentials_and_admin_sessions",
+      "breakpoints": true
     }
   ]
 }

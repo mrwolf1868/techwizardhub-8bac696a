@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Calculator, Send, Timer } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { makeQuestions, quizAnswer, QUIZ_SECONDS, type QuizQuestion } from "@/lib/quiz";
+import { makeQuestions, quizAnswer, QUIZ_SECONDS, shouldAutoSubmitQuiz, type QuizQuestion } from "@/lib/quiz";
 
 type QuizState = { q?: QuizQuestion[]; start?: number; r?: Record<string, { s: number; ms: number }> };
 type MatchLite = { id: string; status: string; state: string | null; creator_id: string; opponent_id: string | null };
@@ -36,20 +36,31 @@ export const QuizBoard = ({ match, me }: { match: MatchLite; me: string | null }
   const st = useMemo(() => parse(match.state), [match.state]);
   const [answers, setAnswers] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const sent = useRef(false);
+  const submitting = useRef(false);
   const left = useCountdown(st.start);
   const mine = me ? st.r?.[me] : undefined;
   const oppId = me === match.creator_id ? match.opponent_id : match.creator_id;
   const theirs = oppId ? st.r?.[oppId] : undefined;
   const questions = st.q ?? [];
 
-  const submit = async () => {
-    if (busy || mine) return;
+  const submit = useCallback(async () => {
+    if (submitting.current || sent.current || mine || match.status !== "active") return;
+    submitting.current = true;
     setBusy(true);
     const nums = questions.map((_, i) => { const n = Number.parseInt(answers[i] ?? "", 10); return Number.isFinite(n) ? n : -999999; });
     const { error } = await supabase.rpc("quiz_submit", { _id: match.id, _answers: nums });
     setBusy(false);
+    submitting.current = false;
+    if (!error) sent.current = true;
     if (error) toast.error(error.message.replace(/^.*?: /, ""));
-  };
+  }, [mine, questions, answers, match.id, match.status]);
+
+  useEffect(() => {
+    if (shouldAutoSubmitQuiz(left, match.status === "active", !!mine || sent.current, busy) && questions.length > 0) {
+      void submit();
+    }
+  }, [left, match.status, mine, busy, questions.length, submit]);
 
   // After time is up, either player can ask the server to decide the match.
   useEffect(() => {
@@ -105,9 +116,12 @@ export const QuizPractice = () => {
   const finish = () => {
     if (!round) return;
     const ms = Date.now() - round.start;
-    const s = ms > QUIZ_SECONDS * 1000 ? 0 : round.q.filter((q, i) => Number.parseInt(answers[i] ?? "", 10) === quizAnswer(q)).length;
-    setResult({ s, ms });
+    const s = round.q.filter((q, i) => Number.parseInt(answers[i] ?? "", 10) === quizAnswer(q)).length;
+    setResult({ s, ms: Math.min(ms, QUIZ_SECONDS * 1000) });
   };
+  useEffect(() => {
+    if (shouldAutoSubmitQuiz(left, !!round, !!result, false)) finish();
+  }, [left, round, result]); // eslint-disable-line react-hooks/exhaustive-deps
   const outcome = result && round && (result.s > round.cpu.s || (result.s === round.cpu.s && result.ms < round.cpu.ms) ? "You beat the Computer" : result.s === round.cpu.s && result.ms === round.cpu.ms ? "Draw" : "The Computer won this round");
 
   return (

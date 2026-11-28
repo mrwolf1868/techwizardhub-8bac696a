@@ -21,7 +21,7 @@ import {
   Power,
   Download,
   RefreshCcw,
-  Rocket,
+  BriefcaseBusiness,
   Plus,
   Pencil,
   X,
@@ -116,10 +116,21 @@ type Section =
 const Admin = () => {
   const { isAdmin, userId, syncFromSupabase } = useUserStore();
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [verified, setVerified] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  useEffect(() => {
+    return () => { void supabase.functions.invoke("admin-access", { body: { action: "close" } }); };
+  }, []);
+  useEffect(() => {
+    if (!verified) return;
+    const timer = window.setTimeout(() => setVerified(false), 30 * 60 * 1000);
+    return () => window.clearTimeout(timer);
+  }, [verified]);
   useEffect(() => {
     let mounted = true;
-    void supabase.auth.getSession().then(async ({ data }) => {
-      if (data.session) await syncFromSupabase().catch(() => undefined);
+    void supabase.auth.getUser().then(async ({ data }) => {
+      if (data.user) await syncFromSupabase().catch(() => undefined);
     }).finally(() => { if (mounted) setCheckingAuth(false); });
     return () => { mounted = false; };
   }, [syncFromSupabase]);
@@ -138,6 +149,7 @@ const Admin = () => {
   const [settings, setSettings] = useState<Record<string, unknown>>({});
 
   const load = async () => {
+    if (!verified) return;
     const [{ data: p }, { data: gm }, { data: fx }, { data: al }, { data: m }, { data: s }, { data: wr }, { data: profit }, { data: pw }] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(1000),
       supabase.from("game_matches").select("id, game_type, stake, status, creator_id, opponent_id, invited_user_id, match_mode, winner_id, house_fee, created_at, updated_at").order("created_at", { ascending: false }).limit(500),
@@ -170,7 +182,7 @@ const Admin = () => {
   };
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin || !verified) return;
     load();
 
     const channel = supabase
@@ -181,11 +193,30 @@ const Admin = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [isAdmin]);
+  }, [isAdmin, verified]);
 
   if (checkingAuth) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
   if (!userId) return <Navigate to="/login" replace />;
   if (!isAdmin) return <Navigate to="/" replace />;
+  if (!verified) return <div className="auth-shell"><section className="auth-panel">
+    <div className="auth-wordmark"><span className="text-primary">TECHWOLF</span>pro</div>
+    <h1 className="mb-6 text-2xl font-bold">Admin access</h1>
+    <form onSubmit={async (event) => {
+      event.preventDefault(); if (verifyBusy) return;
+      setVerifyBusy(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("admin-access", { body: { action: "open", password: adminPassword } });
+        setAdminPassword("");
+        if (error || !data?.success) { toast.error(data?.error || "Could not verify access"); return; }
+        setVerified(true);
+      } finally { setVerifyBusy(false); }
+    }}>
+      <label htmlFor="admin-password" className="text-sm text-muted-foreground">Account password</label>
+      <Input id="admin-password" type="password" autoComplete="current-password" required value={adminPassword} onChange={e => setAdminPassword(e.target.value)} />
+      <Button type="submit" disabled={verifyBusy}>{verifyBusy ? "Verifying…" : "Continue"}</Button>
+      <Button type="button" variant="outline" onClick={() => navigate("/")}><ArrowLeft /> Back to website</Button>
+    </form>
+  </section></div>;
 
 
   const handleLogout = async () => {
@@ -203,7 +234,7 @@ const Admin = () => {
     { key: "activity", label: "Activity", icon: ActivityIcon },
     { key: "payments", label: "Payments", icon: CheckCircle2 },
     { key: "withdrawals", label: "Withdrawals", icon: Wallet },
-    { key: "services", label: "Services", icon: Rocket },
+    { key: "services", label: "Services", icon: BriefcaseBusiness },
     { key: "settings", label: "Settings", icon: SettingsIcon },
   ];
 
@@ -229,7 +260,7 @@ const Admin = () => {
             const Icon = it.icon;
             const active = section === it.key;
             return (
-              <button
+              <Button variant="ghost"
                 key={it.key}
                 onClick={() => { setSection(it.key); setSidebarOpen(false); }}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
@@ -240,7 +271,7 @@ const Admin = () => {
               >
                 <Icon className="h-4 w-4" />
                 {it.label}
-              </button>
+              </Button>
             );
           })}
         </nav>
@@ -259,7 +290,7 @@ const Admin = () => {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/60 md:hidden"
+          className="fixed inset-0 z-30 bg-background/80 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -268,7 +299,7 @@ const Admin = () => {
       <main className="flex-1 overflow-x-hidden">
         <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur">
           <div className="flex items-center gap-2">
-            <button
+            <Button variant="ghost"
               className="rounded-lg border border-border/60 p-2 md:hidden"
               onClick={() => setSidebarOpen(true)}
               aria-label="Menu"
@@ -276,7 +307,7 @@ const Admin = () => {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 6h18M3 12h18M3 18h18" />
               </svg>
-            </button>
+            </Button>
             <h1 className="font-display text-lg font-black">{navItems.find((n) => n.key === section)?.label}</h1>
           </div>
           <div className="flex items-center gap-1">
@@ -830,201 +861,45 @@ const WithdrawalsPanel = ({
   );
 };
 
-/* ---------- Payout (Mullahc) keys ---------- */
-const MULLAHC_FIELDS = [
-  { key: "mullahc_public_key", label: "Public key", secret: false },
-  { key: "mullahc_secret_key", label: "Secret key", secret: true },
-] as const;
-
-const PayoutKeysCard = ({ settings, onSaved }: { settings: Record<string, unknown>; onSaved: () => void }) => {
-  const [vals, setVals] = useState<Record<string, string>>({});
-  const [env, setEnv] = useState<"sandbox" | "live">("live");
-  const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    const v: Record<string, string> = {};
-    MULLAHC_FIELDS.forEach((f) => { const x = settings[f.key]; v[f.key] = typeof x === "string" ? x : ""; });
-    setVals(v);
-    setEnv(settings.mullahc_env === "sandbox" ? "sandbox" : "live");
-  }, [settings]);
-  const save = async () => {
-    if (MULLAHC_FIELDS.some((f) => !vals[f.key]?.trim())) return toast.error("Fill in both payout keys");
-    const sandboxKey = vals.mullahc_public_key.trim().startsWith("sbx_") || vals.mullahc_secret_key.trim().startsWith("sbx_");
-    if (sandboxKey !== (env === "sandbox")) return toast.error(env === "sandbox" ? "Sandbox keys start with sbx_" : "These look like sandbox keys — switch to Sandbox or use your live keys");
-    setSaving(true);
-    const now = new Date().toISOString();
-    const rows = [...MULLAHC_FIELDS.map((f) => ({ key: f.key, value: vals[f.key].trim() as never, updated_at: now })), { key: "mullahc_env", value: env as never, updated_at: now }];
-    const { error } = await supabase.from("admin_settings").upsert(rows);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    await supabase.from("activity_logs").insert({ event: "setting_change", detail: `Payout keys updated (env: ${env})` });
-    toast.success("Payout keys saved");
-    onSaved();
-  };
-  return (
-    <Card className="bg-gradient-card p-4">
-      <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">Withdrawal payouts (Mullahc)</h3>
-      <p className="mt-1 text-xs text-muted-foreground">Player withdrawals and your profit withdrawals are sent from your Mullahc business wallet. Find the keys under Developers in your Mullahc account; payment confirmations are set up automatically. Deposit settings below are not affected. Only admins can see these.</p>
-      <div className="mt-4 grid gap-3">
-        <div className="flex w-fit gap-1 rounded-lg border border-border/60 p-1">
-          {(["sandbox", "live"] as const).map((e) => (
-            <button key={e} type="button" onClick={() => setEnv(e)} className={`rounded-md px-3 py-1 text-xs capitalize ${env === e ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{e}</button>
-          ))}
-        </div>
-        {MULLAHC_FIELDS.map((f) => (
-          <div key={f.key}>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">{f.label}</label>
-            <Input type={f.secret ? "password" : "text"} value={vals[f.key] ?? ""} onChange={(e) => setVals((v) => ({ ...v, [f.key]: e.target.value }))} className="mt-1 font-mono" autoComplete="off" />
-          </div>
-        ))}
-        <Button onClick={save} disabled={saving} className="w-fit">{saving ? "Saving…" : "Save payout keys"}</Button>
-      </div>
-    </Card>
-  );
-};
-
-/* ---------- Settings ---------- */
+/* ---------- Non-secret payment configuration ---------- */
 const SettingsPanel = ({ settings, onSaved }: { settings: Record<string, unknown>; onSaved: () => void }) => {
-  const [shortcode, setShortcode] = useState("");
-  const [till, setTill] = useState("");
-  const [consumerKey, setConsumerKey] = useState("");
-  const [consumerSecret, setConsumerSecret] = useState("");
-  const [passkey, setPasskey] = useState("");
-  const [env, setEnv] = useState<"sandbox" | "production">("sandbox");
+  const [status, setStatus] = useState<Record<string, boolean>>({});
+  const [shortcode, setShortcode] = useState(String(settings.mpesa_shortcode ?? ""));
+  const [till, setTill] = useState(String(settings.mpesa_till ?? ""));
+  const [env, setEnv] = useState(settings.mpesa_env === "production" ? "production" : "sandbox");
   const [saving, setSaving] = useState(false);
-
-  const asStr = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
-
-  const callbackUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mpesa-callback`;
-
   useEffect(() => {
-    setShortcode(asStr(settings.mpesa_shortcode) || asStr(settings.mpesa_till));
-    setTill(asStr(settings.mpesa_till));
-    setConsumerKey(asStr(settings.mpesa_consumer_key));
-    setConsumerSecret(asStr(settings.mpesa_consumer_secret));
-    setPasskey(asStr(settings.mpesa_passkey));
-    const e = asStr(settings.mpesa_env);
-    setEnv(e === "production" ? "production" : "sandbox");
-  }, [settings]);
-
-  const save = async (key: string, value: unknown, label: string) => {
+    void supabase.functions.invoke("payment-config-status").then(({ data }) => { if (data?.configured) setStatus(data.configured); });
+  }, []);
+  const save = async () => {
+    if (!/^\d{4,10}$/.test(shortcode) || !/^\d{4,10}$/.test(till)) return toast.error("Enter valid shortcode and till numbers");
     setSaving(true);
-    const { error } = await supabase.from("admin_settings").upsert({
-      key, value: value as never, updated_at: new Date().toISOString(),
-    });
+    const { error } = await supabase.from("admin_settings").upsert([
+      { key: "mpesa_shortcode", value: shortcode }, { key: "mpesa_till", value: till }, { key: "mpesa_env", value: env },
+    ]);
     setSaving(false);
-    if (error) return toast.error(error.message);
-    await supabase.from("activity_logs").insert({
-      event: "setting_change", detail: `${label} set to ${JSON.stringify(value)}`,
-    });
-    toast.success(`${label} saved`);
-    onSaved();
+    if (error) return toast.error("Could not save payment settings");
+    toast.success("Payment settings saved"); onSaved();
   };
-
-  const saveAllMpesa = async () => {
-    if (!/^\d{4,10}$/.test(shortcode)) return toast.error("Business Shortcode must be 4-10 digits");
-    if (!/^\d{4,10}$/.test(till)) return toast.error("Till Number must be 4-10 digits");
-    if (!consumerKey.trim() || !consumerSecret.trim() || !passkey.trim())
-      return toast.error("Consumer key, secret and passkey are required");
-    setSaving(true);
-    const rows = [
-      { key: "mpesa_shortcode", value: shortcode },
-      { key: "mpesa_till", value: till },
-      { key: "mpesa_consumer_key", value: consumerKey.trim() },
-      { key: "mpesa_consumer_secret", value: consumerSecret.trim() },
-      { key: "mpesa_passkey", value: passkey.trim() },
-      { key: "mpesa_env", value: env },
-    ].map((r) => ({ ...r, value: r.value as never, updated_at: new Date().toISOString() }));
-    const { error } = await supabase.from("admin_settings").upsert(rows);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    await supabase.from("activity_logs").insert({
-      event: "setting_change", detail: `M-Pesa credentials updated (env: ${env})`,
-    });
-    toast.success("M-Pesa credentials saved");
-    onSaved();
-  };
-
-  return (
-    <div className="space-y-4">
-      <WalletLimitsCard />
-      <AnnouncementCard />
-      <PayoutKeysCard settings={settings} onSaved={onSaved} />
-      <Card className="bg-gradient-card p-4">
-        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-muted-foreground">
-          M-Pesa BuyGoods (STK push) credentials
-        </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          All fields below are required to start STK push for Buy Goods Online.
-          Coins are only granted after the M-Pesa callback confirms the payment was successful.
-        </p>
-
-        <div className="mt-4 grid gap-3">
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Environment</label>
-            <div className="mt-1 flex w-fit gap-1 rounded-lg border border-border/60 p-1">
-              {(["sandbox", "production"] as const).map((e) => (
-                <button
-                  key={e}
-                  type="button"
-                  onClick={() => setEnv(e)}
-                  className={`rounded-md px-3 py-1 text-xs capitalize ${
-                    env === e ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1 text-[10px] text-muted-foreground">Use Sandbox for testing, Production for live payments.</p>
-          </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Consumer Key</label>
-            <Input value={consumerKey} onChange={(e) => setConsumerKey(e.target.value)} placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxx" className="mt-1 font-mono" />
-          </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Consumer Secret</label>
-            <Input type="password" value={consumerSecret} onChange={(e) => setConsumerSecret(e.target.value)} placeholder="••••••••••••" className="mt-1 font-mono" />
-          </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Business Shortcode (Head Office / Store Number)
-            </label>
-            <Input value={shortcode} onChange={(e) => setShortcode(e.target.value)} placeholder="7797502" className="mt-1 font-mono" />
-            <p className="mt-1 text-[10px] text-muted-foreground">Used to authenticate the STK push request.</p>
-          </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Till Number (PartyB)
-            </label>
-            <Input value={till} onChange={(e) => setTill(e.target.value)} placeholder="9744173" className="mt-1 font-mono" />
-            <p className="mt-1 text-[10px] text-muted-foreground">Where customer payments actually settle.</p>
-          </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Passkey (Lipa Na M-Pesa)</label>
-            <Input type="password" value={passkey} onChange={(e) => setPasskey(e.target.value)} placeholder="••••••••••••" className="mt-1 font-mono" />
-          </div>
-
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Callback URL</label>
-            <Input value={callbackUrl} readOnly className="mt-1 font-mono text-xs" />
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Paste this exact URL into your Daraja app's STK callback configuration.
-            </p>
-          </div>
-
-          <Button disabled={saving} onClick={saveAllMpesa} className="mt-1">
-            Save M-Pesa credentials
-          </Button>
-        </div>
-      </Card>
-
-    </div>
-  );
+  return <div className="space-y-4">
+    <WalletLimitsCard /><AnnouncementCard />
+    <Card className="p-5">
+      <h3 className="mb-4 text-lg font-bold">Payment credentials</h3>
+      {[["deposit", "M-Pesa deposits"], ["payout", "Mullahc withdrawals"]].map(([key, label]) =>
+        <div className="flex items-center justify-between border-b border-border py-3 text-sm" key={key}>
+          <span>{label}</span><span className="text-muted-foreground">{status[key] ? "Configured" : "Not configured"}</span>
+        </div>)}
+    </Card>
+    <Card className="p-5">
+      <h3 className="mb-4 text-lg font-bold">M-Pesa deposits</h3>
+      <div className="mb-4 flex gap-2">{["sandbox", "production"].map(e => <Button key={e} variant={env === e ? "default" : "outline"} aria-pressed={env === e} onClick={() => setEnv(e)}>{e === "production" ? "Production" : "Sandbox"}</Button>)}</div>
+      <label htmlFor="stk-shortcode" className="text-sm text-muted-foreground">Business shortcode</label>
+      <Input id="stk-shortcode" value={shortcode} onChange={e => setShortcode(e.target.value)} className="mb-4 mt-2" inputMode="numeric" />
+      <label htmlFor="stk-till" className="text-sm text-muted-foreground">Till number</label>
+      <Input id="stk-till" value={till} onChange={e => setTill(e.target.value)} className="mb-4 mt-2" inputMode="numeric" />
+      <Button disabled={saving} onClick={() => void save()}>{saving ? "Saving…" : "Save deposit settings"}</Button>
+    </Card>
+  </div>;
 };
 
 /* ---------- Services manager (unified with child_projects) ---------- */
@@ -1645,7 +1520,7 @@ const MessagesPanel = ({ profiles }: { profiles: Profile[] }) => {
         </div>
 
         <div className="mb-3 grid grid-cols-2 gap-2">
-          <button
+          <Button variant="ghost"
             type="button"
             onClick={() => setMode("broadcast")}
             className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
@@ -1655,8 +1530,8 @@ const MessagesPanel = ({ profiles }: { profiles: Profile[] }) => {
             }`}
           >
             <Megaphone className="h-4 w-4" /> All users
-          </button>
-          <button
+          </Button>
+          <Button variant="ghost"
             type="button"
             onClick={() => setMode("individual")}
             className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
@@ -1666,7 +1541,7 @@ const MessagesPanel = ({ profiles }: { profiles: Profile[] }) => {
             }`}
           >
             <UserIcon className="h-4 w-4" /> Individual
-          </button>
+          </Button>
         </div>
 
         {mode === "individual" && (
@@ -1685,7 +1560,7 @@ const MessagesPanel = ({ profiles }: { profiles: Profile[] }) => {
                 <div className="p-3 text-center text-xs text-muted-foreground">No users found</div>
               )}
               {filteredUsers.slice(0, 50).map((p) => (
-                <button
+                <Button variant="ghost"
                   key={p.user_id}
                   type="button"
                   onClick={() => setRecipient(p.user_id)}
@@ -1695,7 +1570,7 @@ const MessagesPanel = ({ profiles }: { profiles: Profile[] }) => {
                 >
                   <span className="font-mono">{p.phone}</span>
                   <span className="text-muted-foreground">{p.email || "—"}</span>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -1740,13 +1615,13 @@ const MessagesPanel = ({ profiles }: { profiles: Profile[] }) => {
                 >
                   {m.recipient_id ? phoneFor(m.recipient_id) : "Broadcast — all users"}
                 </span>
-                <button
+                <Button variant="ghost"
                   onClick={() => remove(m.id)}
                   className="text-muted-foreground hover:text-destructive"
                   aria-label="Delete message"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
               {m.title && <div className="text-sm font-bold">{m.title}</div>}
               <div className="whitespace-pre-wrap text-xs text-muted-foreground">{m.body}</div>

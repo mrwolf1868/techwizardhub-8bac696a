@@ -29,15 +29,6 @@ const PRESETS = [70, 150, 350, 700, 1500];
 const WITHDRAW_LABEL: Record<string, string> = { pending: "Queued", processing: "Sending", paid: "Paid", failed: "Failed · refunded", rejected: "Rejected · refunded" };
 type WithdrawalRow = { id: string; amount: number; phone: string; status: string; created_at: string };
 
-// Persistent client id (used by callback to map payment → this browser)
-const getClientId = () => {
-  let id = localStorage.getItem("twh-client-id");
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem("twh-client-id", id);
-  }
-  return id;
-};
 
 const Buy = () => {
   const { syncFromSupabase, coins, phoneNumber: profilePhone, userId, isAdmin } = useUserStore();
@@ -94,13 +85,12 @@ const Buy = () => {
       return toast.error(`Deposits must be from KSh ${limits.min_deposit} to KSh ${limits.max_deposit.toLocaleString()}`);
     const normalized = normalizePhone(parsed.data.phone);
     if (!normalized) return toast.error("Enter a valid Safaricom number");
-    const clientId = getClientId();
 
     setLoading(true);
     setStatusMsg("Sending STK push...");
 
     const { data, error } = await supabase.functions.invoke("mpesa-stk-push", {
-      body: { phone: normalized, amount: parsed.data.amount, clientId },
+      body: { phone: normalized, amount: parsed.data.amount },
     });
 
     if (error || !data?.success) {

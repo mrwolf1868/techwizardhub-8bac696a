@@ -23,15 +23,15 @@
     --board-light: 34 42% 70%; --board-dark: 25 34% 42%; --piece-light: 46 92% 91%; --piece-light-edge: 38 40% 70%; --piece-dark: 0 0% 0%; --piece-outline: 0 0% 0%; --board-frame: 25 30% 22%;
     --board-selection: 48 100% 60%; --board-target: 48 100% 45%;
     --piece-shadow: 0 2px 3px hsl(var(--background) / .45);
-    --brand-gradient: linear-gradient(115deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --brand-gradient: linear-gradient(hsl(var(--primary)), hsl(var(--primary)));
     --tile-overlay: linear-gradient(90deg, hsl(var(--card)) 5%, hsl(var(--card) / .95) 30%, hsl(var(--card) / .15) 85%);
     --service-overlay: linear-gradient(0deg, hsl(var(--background)) 0%, hsl(var(--background) / .9) 25%, hsl(var(--background) / .05) 90%);
     --gradient-primary: var(--brand-gradient);
-    --gradient-coin: linear-gradient(135deg, hsl(var(--warning)), hsl(34 72% 52%));
+    --gradient-coin: linear-gradient(hsl(var(--coin)), hsl(var(--coin)));
     --gradient-magenta: linear-gradient(135deg, hsl(var(--primary-glow)), hsl(var(--primary)));
-    --gradient-card: linear-gradient(160deg, hsl(var(--card)), hsl(var(--background)));
-    --shadow-glow: 0 0 22px hsl(var(--primary) / .16);
-    --shadow-coin: 0 0 18px hsl(var(--warning) / .18);
+    --gradient-card: linear-gradient(hsl(var(--card)), hsl(var(--card)));
+    --shadow-glow: none;
+    --shadow-coin: none;
     --shadow-magenta: 0 0 22px hsl(var(--brand-pink) / .16);
     --shadow-card: 0 10px 30px -14px hsl(var(--background) / .72);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -418,3 +418,35 @@
 .trade-table th { text-align:left; font-weight:600; color:hsl(var(--muted-foreground)); padding:6px 8px; border-bottom:1px solid hsl(var(--border)); white-space:nowrap; }
 .trade-table td { padding:6px 8px; border-bottom:1px solid hsl(var(--border) / .5); white-space:nowrap; }
 .side-tag { font-weight:700; text-transform:uppercase; } .side-tag.buy { color:hsl(var(--bull)); } .side-tag.sell { color:hsl(var(--bear)); }
+
+/* Structured club-style interface: quiet surfaces, clear borders, consistent controls. */
+.auth-shell { min-height:100dvh; display:grid; place-items:center; padding:32px 20px; }
+.auth-panel { width:100%; max-width:420px; border:0; background:transparent; padding:0; box-shadow:none; }
+.auth-wordmark { font-size:28px; font-weight:800; padding-bottom:24px; margin-bottom:28px; border-bottom:2px solid hsl(var(--primary)); }
+.auth-panel input { min-height:48px; border-radius:6px; background:hsl(var(--card)); }
+.auth-panel form { display:grid; gap:18px; }
+.auth-panel form>button { min-height:48px; box-shadow:none; font-weight:700; }
+.auth-panel h2 { margin-bottom:8px; font-size:24px; }
+.auth-panel label { letter-spacing:0; font-size:12px; }
+.service-art { position:absolute; width:36%; height:100%; display:grid; place-items:center; background:hsl(var(--accent)); color:hsl(var(--primary)); }
+.service-art svg { width:40px; height:40px; }
+.topbar button:not(.brand-button) { border:1px solid hsl(var(--border)); border-radius:6px; }
+.player-avatar { background:hsl(var(--secondary)); color:hsl(var(--foreground)); }
+.game-grid { gap:16px; }
+.game-tile { min-height:248px; }
+.game-copy h3 { font-size:26px; }
+.game-copy button { border:1px solid hsl(var(--primary)); min-height:40px; }
+.game-tag { color:hsl(var(--muted-foreground)); }
+.game-tile:hover { border-color:hsl(var(--primary)); }
+.match-card,.board-frame,.game-chat,.rules-helper { border-radius:8px; }
+.nav-item { border:1px solid transparent; border-radius:6px; }
+.nav-item.active { border-color:hsl(var(--primary) / .4); }
+.stats-band { background:transparent; }
+.stats-band>div { border-left:0; padding-left:0; }
+.stats-band span { color:hsl(var(--muted-foreground)); }
+.promotion { height:auto; aspect-ratio:2.7; border-radius:0; border:0; margin-top:24px; }
+.promotion-slide { object-fit:cover; }
+.promotion .promotion-fallback { position:absolute; inset:0; background:hsl(var(--card)); display:flex; align-items:center; justify-content:space-between; padding:24px; }
+.promotion-fallback h2 { font-size:30px; }
+.promotion-fallback .game-art { width:50%; height:100%; background:transparent; }
+@media(max-width:699px) { .promotion { aspect-ratio:1.7; } .promotion-fallback { padding:16px; } .promotion-fallback h2 { font-size:24px; } .header-wallet { padding:4px 8px; } .auth-wordmark { font-size:26px; } }

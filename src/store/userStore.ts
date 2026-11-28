@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { supabase } from "@/integrations/supabase/client";
 
 export type Transaction = {
@@ -52,7 +51,6 @@ const generateReferralCode = () =>
 
 
 export const useUserStore = create<UserState>()(
-  persist(
     (set, get) => ({
       initialized: false,
       userId: null,
@@ -237,7 +235,5 @@ export const useUserStore = create<UserState>()(
           bots: [],
           isAdmin: false,
         }),
-    }),
-    { name: "techwizard-hub-user" }
-  )
+    })
 );
