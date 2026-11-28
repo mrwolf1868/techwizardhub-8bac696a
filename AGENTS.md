@@ -4,6 +4,7 @@
 - Admin reporting reads live application records under the existing admin role policies; never manufacture balances, matches, or elevated roles on the client.
 - Require a server-verified, session-bound admin password grant before loading private admin reports or allowing administrative edits; client flags cannot bypass database policies.
 - Never assign admin privileges from phone numbers or user-editable signup metadata; existing roles are preserved and grants are explicitly managed.
+- Use hosted Auth protections for password sign-in and admin password verification, not a client-only attempt counter, because direct Auth requests can bypass a browser lockout.
 - Keep match charging, settlement, withdrawal reservations, and payout completion in protected database functions; clients must never change financial balances or ledgers directly.
 - Charge match entries only when an opponent joins; searches stay free so cancelled or unanswered searches never move money.
 - Payouts run through the mpesa-payout function using the Mullahc payout API with keys from admin-only settings (falling back to secure secrets); it refuses before reserving balance when keys are missing, and only provider-confirmed results (signed webhook re-checked against the status endpoint, or a status poll) mark payouts paid.

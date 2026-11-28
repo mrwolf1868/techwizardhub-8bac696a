@@ -4,7 +4,7 @@
 - [x] Restrict data access, remove frontend credential reads, secure admin entry, and retain server-only STK payments.
 - [ ] Activate the prepared hash-only access-password gate — secure hash form was declined; inactive until configured.
 - [ ] Email-code login and Techwolf verification — keep existing account details; use techwolfpro.online, waiting on the owner to complete sender-domain setup and DNS verification before changing the live sign-in flow.
-- [ ] Four-attempt / 24-hour password lockout — waiting on acceptance of platform limitation.
+- [x] Use standard hosted sign-in protection, leaked-password checks, and current-password verification; the owner chose these instead of a custom four-attempt / 24-hour lockout.
 - [x] Automatically submit quiz answers when the timer ends and verify results (24 focused tests pass).
 - [x] Remove credential-bearing README and add redacted repository/history secret checks.
 - [ ] Public repository visibility, branch protection, and exposed-history cleanup — require repository-owner access and credential rotation; deployment checks intentionally refuse exposed history.
