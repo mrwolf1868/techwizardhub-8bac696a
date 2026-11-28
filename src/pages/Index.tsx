@@ -3,15 +3,16 @@ import { Button } from "@/components/ui/button";
 import { AppLayout, formatKsh } from "@/components/AppLayout";
 import { GAMES, GameArt, GameGrid, ServiceGrid, useServices } from "@/components/CatalogCards";
 import { AssetImage } from "@/components/AssetImage";
+import { useNavigate } from "react-router-dom";
 import { useUserStore } from "@/store/userStore";
-import draftHero from "@/assets/draft-promotion.jpg.asset.json";
-import chessHero from "@/assets/chess-promotion.jpg.asset.json";
-import draftImage from "@/assets/draft-game.jpg.asset.json";
+import draftHero from "@/assets/draughts-table.jpg.asset.json";
+import chessHero from "@/assets/chess-table.jpg.asset.json";
 
-const slides = [draftHero, chessHero, draftImage];
-const slideAlt = ["Draft promotion", "Chess promotion", "Draft board"];
+const slides = [draftHero, chessHero];
+const slideAlt = ["Black and cream draughts board", "Black and cream chessboard"];
 
 const Index = () => {
+  const navigate = useNavigate();
   const coins = useUserStore((s) => s.coins);
   const { items, loading } = useServices();
   const [slide, setSlide] = useState(0);
@@ -27,9 +28,10 @@ const Index = () => {
       <section className="promotion" aria-label="TECHWOLFpro promotions">
         {slides.map((asset, i) => (
           <div key={asset.asset_id} className={slide === i ? "promotion-slide is-active" : "promotion-slide"}>
-            <AssetImage src={asset.url} alt={slideAlt[i]} className="h-full w-full object-cover" fallback={<div className="promotion-fallback"><div><h2>TECHWOLFpro</h2><Button onClick={() => window.location.assign("/games")}>Games</Button></div><GameArt game={GAMES[i % 2]} /></div>} />
+            <AssetImage src={asset.url} alt={slideAlt[i]} className="h-full w-full object-cover" fallback={<div className="promotion-fallback"><GameArt game={GAMES[i % 2]} /></div>} />
           </div>
         ))}
+        <div className="promotion-copy"><span className="eyebrow">THE PLAYERS' CLUB</span><h1>TECHWOLFpro</h1><p>{slide === 0 ? "Draft" : "Chess"} · Head-to-head</p><Button onClick={() => navigate(slide === 0 ? "/games/draughts" : "/games/chess")}>Enter match</Button></div>
         <div className="slide-dots">
           {slides.map((_, i) => (
             <Button key={i} variant="ghost" size="icon" aria-label={`Show promotion ${i + 1}`} aria-pressed={slide === i}

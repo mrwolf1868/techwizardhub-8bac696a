@@ -135,7 +135,7 @@ const ServiceLauncher = () => {
             {error}
           </div>
         )}
-        {iframeUrl && (
+        {iframeUrl && (!paywall || paid) && (
           <iframe
             ref={iframeRef}
             title={child?.name || "Service"}

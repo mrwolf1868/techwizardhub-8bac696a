@@ -34,7 +34,7 @@ const Register = () => {
       );
     }
     const parsed = schema.safeParse({ email, password });
-    if (!parsed.success) return toast.error(parsed.error.errors[0].message);
+    if (!parsed.success) return toast.error(parsed.error.issues[0]?.message || "Check your account details");
 
     setLoading(true);
     const loginEmail = `${normalized}@techwizard.local`;

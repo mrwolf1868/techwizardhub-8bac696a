@@ -127,6 +127,20 @@
       "when": 1795848338039,
       "tag": "0017_protect_wallets_credentials_and_admin_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795848903523,
+      "tag": "0018_enforce_friend_codes_and_verified_deposit_completion",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795849571792,
+      "tag": "0019_protect_child_credentials_and_admin_chat",
+      "breakpoints": true
     }
   ]
 }

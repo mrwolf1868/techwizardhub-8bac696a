@@ -79,7 +79,7 @@ const Buy = () => {
   const buy = async () => {
     const parsed = schema.safeParse({ phone, amount });
     if (!parsed.success) {
-      return toast.error(parsed.error.errors[0].message);
+      return toast.error(parsed.error.issues[0]?.message || "Check the amount and phone number");
     }
     if (amount < limits.min_deposit || amount > limits.max_deposit)
       return toast.error(`Deposits must be from KSh ${limits.min_deposit} to KSh ${limits.max_deposit.toLocaleString()}`);

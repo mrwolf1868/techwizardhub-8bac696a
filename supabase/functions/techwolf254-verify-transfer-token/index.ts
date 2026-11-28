@@ -38,7 +38,13 @@ Deno.serve(async (req) => {
     if (t.child_slug !== expectedSlug)
       return json({ error: "Token mismatch" }, 401);
 
-    await sb.from("transfer_tokens").update({ consumed: true }).eq("id", t.id);
+    const { data: child } = await sb.from("child_projects").select("id").eq("slug", expectedSlug).eq("enabled", true).maybeSingle();
+    if (!child) return json({ error: "Service unavailable" }, 403);
+
+    const { data: consumed, error: consumeError } = await sb.from("transfer_tokens")
+      .update({ consumed: true }).eq("id", t.id).eq("consumed", false)
+      .gt("expires_at", new Date().toISOString()).select("id").maybeSingle();
+    if (consumeError || !consumed) return json({ error: "Token expired or already used" }, 401);
 
     const { data: p } = await sb
       .from("profiles")

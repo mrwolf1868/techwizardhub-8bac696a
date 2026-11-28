@@ -30,11 +30,14 @@ Deno.serve(async (req) => {
     const body = parsed.data;
 
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
+    const caller = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", { global: { headers: { Authorization: auth } } });
+    const { data: adminVerified } = isAdmin ? await caller.rpc("admin_access_verified") : { data: false };
+    if ((body.action === "profit" || body.action === "send_pending") && !adminVerified) return json({ error: "Verify your admin password first" }, 403);
     const cfg = await loadMullahcConfig(admin);
 
     if (body.action === "status") {
       if (!cfg) return json({ ready: false, provider: "mullahc", env: null });
-      if (!isAdmin) return json({ ready: true, provider: "mullahc", env: cfg.env });
+      if (!adminVerified) return json({ ready: true, provider: "mullahc", env: cfg.env });
       const test = await testMullahcKeys(cfg);
       return json({ ready: test.keysValid, configured: true, provider: "mullahc", env: cfg.env, ...test });
     }
@@ -44,15 +47,16 @@ Deno.serve(async (req) => {
     if (body.action === "check") {
       // Re-check payouts still waiting on the provider (backup for a missed webhook).
       let q = admin.from("wallet_withdrawals").select("id,conversation_id").eq("status", "processing").not("conversation_id", "is", null).limit(10);
-      if (!isAdmin) q = q.eq("user_id", user.id);
+      if (!adminVerified) q = q.eq("user_id", user.id);
       const { data: wallet } = await q;
-      const { data: profit } = isAdmin
+      const { data: profit } = adminVerified
         ? await admin.from("admin_profit_withdrawals").select("id,conversation_id").eq("status", "processing").not("conversation_id", "is", null).limit(10)
         : { data: [] as { id: string; conversation_id: string }[] };
       let updated = 0;
       for (const [kind, rows] of [["wallet", wallet ?? []], ["profit", profit ?? []]] as const) {
         for (const row of rows) {
-          const st = await checkPayout(cfg, row.conversation_id!);
+          if (!row.conversation_id) continue;
+          const st = await checkPayout(cfg, row.conversation_id);
           if (!st || st.state === "pending") continue;
           await admin.rpc("payout_complete", { _kind: kind, _id: row.id, _conversation_id: null, _originator_id: null, _success: st.state === "success", _receipt: st.reference, _desc: st.failure ?? (st.state === "success" ? "Paid" : "Payout failed") });
           updated++;

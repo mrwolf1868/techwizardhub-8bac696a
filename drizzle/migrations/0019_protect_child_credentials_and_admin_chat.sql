@@ -1,0 +1,6 @@
+REVOKE SELECT ON public.child_projects FROM authenticated;
+GRANT SELECT(id,slug,name,url,enabled,created_at,updated_at,description,icon,price_coins,continuation_price_coins,free_trial_seconds,sort_order,continuation_duration_value,continuation_duration_unit) ON public.child_projects TO authenticated;
+CREATE OR REPLACE FUNCTION public.can_access_chat_room(_room text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$ SELECT auth.uid() IS NOT NULL AND (_room LIKE 'lobby:%' OR public.admin_access_verified() OR (_room LIKE 'match:%' AND EXISTS(SELECT 1 FROM public.game_matches m WHERE m.id::text=substr(_room,7) AND auth.uid() IN(m.creator_id,m.opponent_id)))) $$;
+REVOKE ALL ON FUNCTION public.can_access_chat_room(text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.can_access_chat_room(text) TO authenticated,service_role;
+DO $$ BEGIN IF has_column_privilege('authenticated','public.child_projects','service_key','SELECT') THEN RAISE EXCEPTION 'Child credentials must be server-only'; END IF; END $$;

@@ -1021,6 +1021,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      join_match_checked: {
+        Args: { _code: string; _id: string }
+        Returns: undefined
+      }
       payout_complete: {
         Args: {
           _conversation_id: string

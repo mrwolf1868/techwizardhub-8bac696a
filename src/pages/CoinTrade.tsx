@@ -88,7 +88,7 @@ const CoinTrade = () => {
     setPositions((prev) => {
       const next = data.map((p) => ({ ...p, lots: +p.lots, entry: +p.entry, sl: p.sl == null ? null : +p.sl, tp: p.tp == null ? null : +p.tp, exit_price: p.exit_price == null ? null : +p.exit_price })) as Position[];
       const closedNow = next.filter((p) => p.status === "closed" && prev.some((o) => o.id === p.id && o.status === "open"));
-      closedNow.forEach((p) => toast(`${p.side.toUpperCase()} ${p.lots} closed by ${p.close_reason}: ${p.pnl! >= 0 ? "+" : ""}KSh ${p.pnl}`));
+      closedNow.forEach((p) => toast(`${p.side.toUpperCase()} ${p.lots} closed by ${p.close_reason}: ${(p.pnl ?? 0) >= 0 ? "+" : ""}KSh ${p.pnl}`));
       if (closedNow.length) void syncFromSupabase();
       return next;
     });
@@ -253,18 +253,18 @@ const CoinTrade = () => {
         <div className="trade-shell">
           <div className="trade-panel overflow-hidden">
             <div className="trade-toolbar" role="toolbar" aria-label="Chart tools">
-              {TIMEFRAMES.map(([label, sec]) => <button key={label} type="button" className={`tb-btn ${tf === sec ? "is-on" : ""}`} onClick={() => setTf(sec)}>{label}</button>)}
+              {TIMEFRAMES.map(([label, sec]) => <Button variant="ghost" key={label} type="button" className={`tb-btn ${tf === sec ? "is-on" : ""}`} onClick={() => setTf(sec)}>{label}</Button>)}
               <span className="sep" />
-              {TYPES.map(({ id, label, icon: Icon }) => <button key={id} type="button" title={label} aria-label={label} className={`tb-btn ${type === id ? "is-on" : ""}`} onClick={() => setType(id)}><Icon />{id === "hollow" && <span className="text-[10px]">H</span>}</button>)}
+              {TYPES.map(({ id, label, icon: Icon }) => <Button variant="ghost" key={id} type="button" title={label} aria-label={label} className={`tb-btn ${type === id ? "is-on" : ""}`} onClick={() => setType(id)}><Icon />{id === "hollow" && <span className="text-[10px]">H</span>}</Button>)}
               <span className="sep" />
               {([["ma", "MA 20"], ["ema", "EMA 50"], ["bb", "BB"], ["rsi", "RSI"]] as const).map(([k, label]) => (
-                <button key={k} type="button" className={`tb-btn ${ind[k] ? "is-on" : ""}`} onClick={() => setInd((v) => ({ ...v, [k]: !v[k] }))}>{label}</button>
+                <Button variant="ghost" key={k} type="button" className={`tb-btn ${ind[k] ? "is-on" : ""}`} onClick={() => setInd((v) => ({ ...v, [k]: !v[k] }))}>{label}</Button>
               ))}
               <span className="sep" />
               {([["cursor", "Cursor", Crosshair], ["hline", "Horizontal line", Minus], ["trend", "Trend line", MoveDiagonal], ["fib", "Fibonacci retracement", Pencil]] as const).map(([k, label, Icon]) => (
-                <button key={k} type="button" title={label} aria-label={label} className={`tb-btn ${tool === k ? "is-on" : ""}`} onClick={() => { pending.current = null; setTool(k); }}><Icon /></button>
+                <Button variant="ghost" key={k} type="button" title={label} aria-label={label} className={`tb-btn ${tool === k ? "is-on" : ""}`} onClick={() => { pending.current = null; setTool(k); }}><Icon /></Button>
               ))}
-              <button type="button" title="Clear drawings" aria-label="Clear drawings" className="tb-btn" onClick={() => setDrawings([])}><Eraser /></button>
+              <Button variant="ghost" type="button" title="Clear drawings" aria-label="Clear drawings" className="tb-btn" onClick={() => setDrawings([])}><Eraser /></Button>
             </div>
             {legend && (
               <div className="trade-legend">
@@ -279,8 +279,8 @@ const CoinTrade = () => {
 
           <aside className="trade-panel space-y-3 p-3">
             <div className="quote-row">
-              <button type="button" className="quote-btn sell" disabled={blocked || busy || !mid} onClick={() => void place("sell")}><small>Sell</small><span>{fx(bid)}</span></button>
-              <button type="button" className="quote-btn buy" disabled={blocked || busy || !mid} onClick={() => void place("buy")}><small>Buy</small><span>{fx(ask)}</span></button>
+              <Button variant="ghost" type="button" className="quote-btn sell" disabled={blocked || busy || !mid} onClick={() => void place("sell")}><small>Sell</small><span>{fx(bid)}</span></Button>
+              <Button variant="ghost" type="button" className="quote-btn buy" disabled={blocked || busy || !mid} onClick={() => void place("buy")}><small>Buy</small><span>{fx(ask)}</span></Button>
             </div>
             <div className="trade-field">
               <label htmlFor="lots">Volume (lots)</label>
@@ -314,8 +314,8 @@ const CoinTrade = () => {
 
         <div className="trade-panel mt-3">
           <div className="trade-toolbar">
-            <button type="button" className={`tb-btn ${tab === "open" ? "is-on" : ""}`} onClick={() => setTab("open")}>Positions ({openTrades.length})</button>
-            <button type="button" className={`tb-btn ${tab === "history" ? "is-on" : ""}`} onClick={() => setTab("history")}>History</button>
+            <Button variant="ghost" type="button" className={`tb-btn ${tab === "open" ? "is-on" : ""}`} onClick={() => setTab("open")}>Positions ({openTrades.length})</Button>
+            <Button variant="ghost" type="button" className={`tb-btn ${tab === "history" ? "is-on" : ""}`} onClick={() => setTab("history")}>History</Button>
           </div>
           <div className="overflow-x-auto">
             <table className="trade-table">

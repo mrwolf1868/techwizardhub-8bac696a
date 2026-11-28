@@ -80,7 +80,7 @@ export const useUserStore = create<UserState>()(
       syncFromSupabase: async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          set({ userId: null, isAdmin: false });
+          get().reset();
           return;
         }
 

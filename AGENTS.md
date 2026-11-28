@@ -2,6 +2,8 @@
 - Reuse the uploaded frontend's layout and asset pointers while keeping this project's managed client, authentication, wallet, and match APIs; the archive uses a different backend schema.
 - Share game and service catalog cards between Home and their dedicated pages to keep layout and navigation consistent.
 - Admin reporting reads live application records under the existing admin role policies; never manufacture balances, matches, or elevated roles on the client.
+- Require a server-verified, session-bound admin password grant before loading private admin reports or allowing administrative edits; client flags cannot bypass database policies.
+- Never assign admin privileges from phone numbers or user-editable signup metadata; existing roles are preserved and grants are explicitly managed.
 - Keep match charging, settlement, withdrawal reservations, and payout completion in protected database functions; clients must never change financial balances or ledgers directly.
 - Charge match entries only when an opponent joins; searches stay free so cancelled or unanswered searches never move money.
 - Payouts run through the mpesa-payout function using the Mullahc payout API with keys from admin-only settings (falling back to secure secrets); it refuses before reserving balance when keys are missing, and only provider-confirmed results (signed webhook re-checked against the status endpoint, or a status poll) mark payouts paid.
@@ -14,5 +16,12 @@
 - Draw the black parts of game pieces as masked backgrounds and cream parts as vector fills, because phone browsers with forced dark mode invert dark vector fills to white.
 - Simple grid games (Tic-Tac-Toe, Connect Four) reuse the match record: the board is a string of "." / "w" (creator, cream) / "b" (opponent, black), and moves go through the same protected move function.
 - Only public, non-personal queries (site settings, service catalog) are persisted to localStorage for faster loads; never persist balances, messages or admin data.
+- Keep the account store memory-only and remove the old persisted account cache on startup, because even admin display flags and stale balances must not survive sessions.
+- Validate legal board moves and derive outcomes in the game-move function; only its server role may call the atomic board update and settlement helper.
+- Share board-rule sources between browser and server so move validation cannot drift while the client remains presentation-only.
+- Confirm STK status directly with Daraja before calling the atomic, idempotent deposit-credit helper; never trust an incoming callback's claimed success.
+- Protect legacy payment credential rows from every browser while keeping server-only reads until the owner moves their values into secure secrets; provider settings and settled records must not change during that transition.
+- Keep the hash-only view-password gate inactive until the owner supplies its secure hash; signed, origin-bound session permits must be verified server-side, never trust access_granted alone.
+- Bundle this project's CDN artwork into production output using assetBundle.ts so external static hosts can serve unchanged asset-pointer URLs without the CDN proxy.
 
 - Coin Trade prices are generated server-side by coin_sync, which catches up missed time in capped batches on each feed call and keeps numbers rounded; the chart only renders coin_feed candles, so the market is identical for everyone and never depends on player positions.

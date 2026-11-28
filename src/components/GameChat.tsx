@@ -15,13 +15,14 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-di
 export const GameChat = ({ room, title, labelFor }: { room: string; title: string; labelFor?: (userId: string) => string }) => {
   const me = useUserStore((s) => s.userId);
   const queryClient = useQueryClient();
-  const key = ["game-chat", room];
+  const key = ["game-chat", room, me];
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const listRef = useRef<HTMLOListElement>(null);
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey: key,
+    enabled: !!me,
     queryFn: async () => {
       const { data, error } = await supabase.from("game_chat_messages").select("id,room,user_id,body,created_at")
         .eq("room", room).order("created_at", { ascending: false }).limit(60);
@@ -32,15 +33,16 @@ export const GameChat = ({ room, title, labelFor }: { room: string; title: strin
   });
 
   useEffect(() => {
+    if (!me) return;
     const channel = supabase
       .channel(`chat-${room}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "game_chat_messages", filter: `room=eq.${room}` }, (payload) => {
         const row = payload.new as ChatRow;
-        queryClient.setQueryData<ChatRow[]>(["game-chat", room], (old = []) => (old.some((m) => m.id === row.id) ? old : [...old, row].slice(-80)));
+        queryClient.setQueryData<ChatRow[]>(["game-chat", room, me], (old = []) => (old.some((m) => m.id === row.id) ? old : [...old, row].slice(-80)));
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [room, queryClient]);
+  }, [room, queryClient, me]);
 
   useEffect(() => {
     const el = listRef.current;

@@ -42,12 +42,12 @@ async function getToken(cfg: MullahcConfig) {
     body: new URLSearchParams({ public_key: cfg.publicKey, secret_key: cfg.secretKey }),
     });
   } catch (e) {
-    console.error("Mullahc token request failed", e);
+    console.error("Mullahc token request failed");
     return { ok: false as const, error: "The payout service could not be reached" };
   }
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok || data.status !== "success" || !data.token) {
-    console.error("Mullahc token failed", resp.status, JSON.stringify(data).slice(0, 300));
+    console.error("Mullahc token failed", resp.status);
     return { ok: false as const, error: resp.status === 401 ? "The payout keys were not accepted" : errMsg(data, "The payout service could not be reached") };
   }
   return { ok: true as const, token: String(data.token) };
@@ -87,7 +87,7 @@ export async function sendPayout(cfg: MullahcConfig, p: { transactionId: string;
     }),
   });
   const data = await resp.json().catch(() => ({}));
-  console.log("Mullahc payout", resp.status, JSON.stringify(data).slice(0, 500));
+  console.log("Mullahc payout response", resp.status);
   if (!resp.ok || data.status !== "success") {
     const reason = resp.status === 402 ? "the payout account balance is too low"
       : resp.status === 403 ? "payouts are not enabled on the payout account"

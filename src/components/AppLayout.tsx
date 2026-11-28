@@ -48,11 +48,11 @@ export const AppLayout = ({ children }: { children: React.ReactNode }) => {
       setAuthed(!!session);
       if (session && event === "SIGNED_IN") window.setTimeout(() => { void syncFromSupabase().catch(() => undefined); }, 0);
     });
-    void supabase.auth.getSession().then(async ({ data }) => {
+    void supabase.auth.getUser().then(async ({ data }) => {
       if (!mounted) return;
-      setAuthed(!!data.session);
-      if (data.session && data.session.user.id !== userId) await syncFromSupabase();
-      else if (data.session) void syncFromSupabase().catch(() => undefined);
+      setAuthed(!!data.user);
+      if (data.user && data.user.id !== userId) await syncFromSupabase();
+      else if (data.user) void syncFromSupabase().catch(() => undefined);
       if (mounted) setChecking(false);
     }).catch(() => {
       if (mounted) setChecking(false);

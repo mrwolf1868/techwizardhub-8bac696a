@@ -45,7 +45,7 @@ export async function sendB2C(cfg: PayoutConfig, phone: string, amount: number, 
     headers: { Authorization: `Basic ${btoa(`${cfg.consumerKey}:${cfg.consumerSecret}`)}` },
   });
   if (!tokenResp.ok) {
-    console.error("B2C OAuth failed", tokenResp.status, await tokenResp.text());
+    console.error("B2C OAuth failed", tokenResp.status);
     return { ok: false as const, error: "M-Pesa could not be reached" };
   }
   const { access_token } = await tokenResp.json();
@@ -67,7 +67,7 @@ export async function sendB2C(cfg: PayoutConfig, phone: string, amount: number, 
     }),
   });
   const data = await resp.json().catch(() => ({}));
-  console.log("B2C response", resp.status, JSON.stringify(data));
+  console.log("B2C response", resp.status);
   if (!resp.ok || String(data.ResponseCode ?? "") !== "0") {
     return { ok: false as const, error: data.errorMessage || data.ResponseDescription || "M-Pesa rejected the payout" };
   }

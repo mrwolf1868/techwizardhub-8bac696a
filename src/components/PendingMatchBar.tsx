@@ -30,8 +30,9 @@ export const PendingMatchBar = () => {
     queryKey: PENDING_KEY(me),
     enabled: !!me,
     queryFn: async () => {
+      if (!me) return [];
       const { data, error } = await supabase.from("game_matches").select("id,game_type,stake,match_mode,creator_charged")
-        .eq("creator_id", me!).eq("status", "waiting").order("created_at", { ascending: false });
+        .eq("creator_id", me).eq("status", "waiting").order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as Pending[];
     },

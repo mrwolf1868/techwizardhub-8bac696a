@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-import { bundleAssets } from "./build/bundleAssets";
+import { bundleAssets } from "./assetBundle";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({

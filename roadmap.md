@@ -1,12 +1,16 @@
 # Requested changes
 ## Premium redesign and security
-- [ ] Remove rocket badges, refresh screen styling, and repair missing catalog/banner media.
-- [ ] Restrict data access, remove frontend credential reads, secure admin entry, and retain server-only STK payments.
-- [ ] Add a server-checked access-password gate (waiting on secure password setup).
-- [ ] Email-code login and Techwolf verification — waiting on account-data answer and owned sender domain.
+- [x] Remove rocket badges, refresh screen styling, and repair missing catalog/banner media.
+- [x] Restrict data access, remove frontend credential reads, secure admin entry, and retain server-only STK payments.
+- [ ] Activate the prepared hash-only access-password gate — secure hash form was declined; inactive until configured.
+- [ ] Email-code login and Techwolf verification — keep existing account details; waiting on owned sender domain before changing the live sign-in flow.
 - [ ] Four-attempt / 24-hour password lockout — waiting on acceptance of platform limitation.
-- [ ] Automatically submit quiz answers when the timer ends and verify results.
-- [ ] Remove credential-bearing README and add repository security checks; public visibility/history cleanup require repository owner.
+- [x] Automatically submit quiz answers when the timer ends and verify results (24 focused tests pass).
+- [x] Remove credential-bearing README and add redacted repository/history secret checks.
+- [ ] Public repository visibility, branch protection, and exposed-history cleanup — require repository-owner access and credential rotation; deployment checks intentionally refuse exposed history.
+- [ ] Move legacy payment-key rows into Edge Function Secrets — server-only now, but replacing saved provider values requires secure setup; deposit settings preserved.
+- [ ] Verify signed-in Home, Games, admin password entry, and live payments — automatic test sign-in failed; needs a preview session and isolated payment test.
+- [ ] Enforce paid service expiration in child apps — parent cannot enforce an external service's access policy; child-service integration is required.
 
 - [x] Pure black and cream vector pieces for chess and draughts.
 - [x] Searches cost nothing; both players are charged when an opponent joins; online players get a Join notification.

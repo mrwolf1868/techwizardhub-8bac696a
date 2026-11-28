@@ -47,6 +47,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { normalizePhone } from "@/lib/phone";
 import { canWithdrawProfit } from "@/lib/matchFees";
+import { csvCell } from "@/lib/csv";
 
 type Profile = {
   user_id: string;
@@ -442,7 +443,7 @@ const MatchesPanel = ({ matches, profiles, onChange }: { matches: Match[]; profi
 
   const exportCsv = () => {
     const header = "game,status,stake,fees,creator,opponent_or_invited_player,winner,created_at\n";
-    const body = rows.map((m) => [m.game_type, m.status, m.stake, m.house_fee, phone(m.creator_id), phone(m.opponent_id || m.invited_user_id), phone(m.winner_id), m.created_at].join(",")).join("\n");
+    const body = rows.map((m) => [m.game_type, m.status, m.stake, m.house_fee, phone(m.creator_id), phone(m.opponent_id || m.invited_user_id), phone(m.winner_id), m.created_at].map(csvCell).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([header + body], { type: "text/csv" }));
     const a = document.createElement("a"); a.href = url; a.download = `matches-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
   };
@@ -619,8 +620,8 @@ const ActivityPanel = ({ logs, profiles }: { logs: ActivityLog[]; profiles: Prof
     const phoneByUser: Record<string, string> = {};
     profiles.forEach((p) => { phoneByUser[p.user_id] = p.phone; });
     const rows = logs.map((l) =>
-      [l.event, (l.detail || "").replace(/"/g, '""'), phoneByUser[l.user_id || ""] || "", l.created_at]
-        .map((c) => `"${c}"`).join(",")
+      [l.event, l.detail || "", phoneByUser[l.user_id || ""] || "", l.created_at]
+        .map(csvCell).join(",")
     ).join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -936,7 +937,7 @@ const ServicesPanel = () => {
   const load = async () => {
     const { data } = await supabase
       .from("child_projects")
-      .select("*")
+      .select("id,slug,name,url,description,icon,price_coins,continuation_price_coins,free_trial_seconds,continuation_duration_value,continuation_duration_unit,enabled")
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
     setItems((data || []) as ServiceRow[]);
@@ -1036,7 +1037,7 @@ const ServicesPanel = () => {
             </div>
             <div>
               <label className="text-[10px] uppercase tracking-widest text-muted-foreground">Icon name</label>
-              <Input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="Rocket / Globe" className="mt-1" />
+              <Input value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="Globe / MessageCircle" className="mt-1" />
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2">

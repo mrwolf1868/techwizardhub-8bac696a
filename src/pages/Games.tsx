@@ -6,6 +6,7 @@ import { GAMES, GameArt, GameGrid } from "@/components/CatalogCards";
 import { GameChat } from "@/components/GameChat";
 import { RulesHelper } from "@/components/RulesHelper";
 import { QuizPractice } from "@/components/QuizBoard";
+import { AssetImage } from "@/components/AssetImage";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { hasRulesHelper, initialGameState, isGameId, type GameId } from "@/lib/games";
 import { Button } from "@/components/ui/button";
@@ -155,7 +156,7 @@ const Lobby = ({ game }: { game: GameId }) => {
   return (
     <PageSection title={info.title}>
       <div className="match-entry">
-        {info.image ? <img src={info.image} alt={`${info.title} board`} /> : <GameArt game={info} className="entry-art" />}
+        {info.image ? <AssetImage src={info.image} alt={`${info.title} board`} fallback={<GameArt game={info} className="entry-art" />} /> : <GameArt game={info} className="entry-art" />}
         <div className="match-entry-copy">
           <span className="eyebrow">{info.tag}</span>
           <h2>Choose how to play</h2>

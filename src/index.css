@@ -446,7 +446,12 @@
 .stats-band span { color:hsl(var(--muted-foreground)); }
 .promotion { height:auto; aspect-ratio:2.7; border-radius:0; border:0; margin-top:24px; }
 .promotion-slide { object-fit:cover; }
+.promotion-copy { position:absolute; left:28px; top:50%; transform:translateY(-50%); z-index:2; max-width:48%; }
+.promotion-copy h1 { font-size:32px; margin:12px 0 !important; }
+.promotion-copy p { font-size:14px; color:hsl(var(--muted-foreground)); margin-bottom:18px; }
+.quote-btn { height:auto; min-height:64px; justify-content:flex-start; display:block; }
+@media(max-width:480px) { .topbar .brand-button strong { font-size:14px; } .topbar>div { gap:4px; } .topbar button:not(.brand-button):not(.header-wallet) { width:30px; height:32px; padding:5px; } .header-wallet { max-width:82px; } .header-wallet strong { font-size:10px; } }
 .promotion .promotion-fallback { position:absolute; inset:0; background:hsl(var(--card)); display:flex; align-items:center; justify-content:space-between; padding:24px; }
 .promotion-fallback h2 { font-size:30px; }
 .promotion-fallback .game-art { width:50%; height:100%; background:transparent; }
-@media(max-width:699px) { .promotion { aspect-ratio:1.7; } .promotion-fallback { padding:16px; } .promotion-fallback h2 { font-size:24px; } .header-wallet { padding:4px 8px; } .auth-wordmark { font-size:26px; } }
+@media(max-width:699px) { .promotion { aspect-ratio:1.7; } .promotion-fallback { padding:16px; } .promotion-fallback h2 { font-size:24px; } .header-wallet { padding:4px 8px; } .auth-wordmark { font-size:26px; } .promotion-copy { left:16px; max-width:60%; } .promotion-copy h1 { font-size:24px; } .promotion-copy .eyebrow { font-size:9px; } .promotion-copy p { font-size:12px; margin-bottom:12px; } }

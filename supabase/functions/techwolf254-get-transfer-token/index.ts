@@ -34,6 +34,8 @@ Deno.serve(async (req) => {
       .eq("slug", slug)
       .maybeSingle();
     if (!child || !child.enabled) return json({ error: "Service unavailable" }, 404);
+    const { data: profile } = await sb.from("profiles").select("banned").eq("user_id", ud.user.id).maybeSingle();
+    if (!profile || profile.banned) return json({ error: "Account restricted" }, 403);
 
     const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
     const expires_at = new Date(Date.now() + 5 * 60 * 1000).toISOString();
@@ -44,6 +46,7 @@ Deno.serve(async (req) => {
       expires_at,
     });
     if (error) return json({ error: error.message }, 500);
+    await sb.from("service_usage").insert({ user_id: ud.user.id, service_key: slug });
     return json({ token, expires_at, child_name: child.name });
   } catch (e) {
     return json({ error: String(e?.message || e) }, 500);

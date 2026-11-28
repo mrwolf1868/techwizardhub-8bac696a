@@ -18,6 +18,8 @@ import ForgotPassword from "./pages/ForgotPassword.tsx";
 import Admin from "./pages/Admin.tsx";
 import CoinTrade from "./pages/CoinTrade.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, gcTime: 24 * 60 * 60_000, refetchOnWindowFocus: false } } });
 
@@ -52,7 +54,19 @@ const router = createBrowserRouter(
   ),
 );
 
-const App = () => (
+const App = () => {
+  useEffect(() => {
+    let account: string | null = null;
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const next = session?.user.id ?? null;
+      if (next !== account) {
+        queryClient.removeQueries({ predicate: query => !PERSISTED_KEYS.has(String(query.queryKey[0])) });
+        account = next;
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+  return (
   <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
     <TooltipProvider>
       <Toaster />
@@ -60,6 +74,7 @@ const App = () => (
       <RouterProvider router={router} />
     </TooltipProvider>
   </PersistQueryClientProvider>
-);
+  );
+};
 
 export default App;

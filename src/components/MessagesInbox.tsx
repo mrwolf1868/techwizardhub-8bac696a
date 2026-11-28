@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bell, Megaphone, Rocket } from "lucide-react";
+import { Bell, Megaphone, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserStore } from "@/store/userStore";
 import { Button } from "@/components/ui/button";
@@ -117,7 +117,7 @@ export const MessagesInbox = () => {
                 <div className="mb-2 flex items-center gap-2">
                   <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-primary shadow-glow">
                     {m.recipient_id ? (
-                      <Rocket className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
+                      <Mail className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
                     ) : (
                       <Megaphone className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
                     )}
