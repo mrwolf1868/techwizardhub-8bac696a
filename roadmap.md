@@ -3,7 +3,7 @@
 - [x] Remove rocket badges, refresh screen styling, and repair missing catalog/banner media.
 - [x] Restrict data access, remove frontend credential reads, secure admin entry, and retain server-only STK payments.
 - [ ] Activate the prepared hash-only access-password gate — secure hash form was declined; inactive until configured.
-- [ ] Email-code login and Techwolf verification — keep existing account details; waiting on owned sender domain before changing the live sign-in flow.
+- [ ] Email-code login and Techwolf verification — keep existing account details; use techwolfpro.online, waiting on the owner to complete sender-domain setup and DNS verification before changing the live sign-in flow.
 - [ ] Four-attempt / 24-hour password lockout — waiting on acceptance of platform limitation.
 - [x] Automatically submit quiz answers when the timer ends and verify results (24 focused tests pass).
 - [x] Remove credential-bearing README and add redacted repository/history secret checks.
